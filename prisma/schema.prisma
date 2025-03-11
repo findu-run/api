@@ -1,0 +1,208 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String    @id @default(uuid())
+  name         String
+  email        String    @unique
+  passwordHash String?   @map("password_hash")
+  avatarUrl    String?   @map("avatar_url")
+  birthday     DateTime?
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  tokens             Token[]
+  accounts           Account[]
+  invites            Invite[]
+  member_on          Member[]
+  owns_organizations Organization[]
+
+  @@map("users")
+}
+
+enum TokenType {
+  PASSWORD_RECOVER
+}
+
+model Token {
+  id        String    @id @default(uuid())
+  type      TokenType
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String @map("user_id")
+
+  @@map("tokens")
+}
+
+enum AccountProvider {
+  GITHUB
+  GOOGLE
+}
+
+model Account {
+  id                String          @id @default(uuid())
+  provider          AccountProvider
+  providerAccountId String          @unique @map("provider_account_id")
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String @map("user_id")
+
+  @@unique([provider, userId])
+  @@map("accounts")
+}
+
+enum Role {
+  OWNER
+  ADMIN
+  MEMBER
+  CUSTOMER
+  BILLING
+}
+
+model Invite {
+  id        String   @id @default(uuid())
+  email     String
+  role      Role
+  createdAt DateTime @default(now()) @map("created_at")
+
+  author   User?   @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  authorId String? @map("author_id")
+
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organizationId String       @map("organization_id")
+
+  @@unique([email, organizationId])
+  @@index([email])
+  @@map("invites")
+}
+
+model Organization {
+  id                        String  @id @default(uuid())
+  name                      String
+  slug                      String  @unique
+  domain                    String? @unique
+  shouldAttachUsersByDomain Boolean @default(false)
+
+  owner   User   @relation(fields: [ownerId], references: [id])
+  ownerId String
+
+  members      Member[]
+  subscription Subscription? // 🔥 A organização tem uma assinatura ativa
+  ipAddress    IpAddress?
+  addons       Addon[] // 🔥 Recursos extras comprados pela organização
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  Invite    Invite[]
+
+  @@index([slug])
+  @@map("organizations")
+}
+
+model IpAddress {
+  id             String @id @default(uuid())
+  organizationId String @unique
+  ip             String @unique
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([updatedAt])
+}
+
+model Member {
+  id   String @id @default(uuid())
+  role Role   @default(MEMBER)
+
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organizationId String       @map("organization_id")
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String @map("user_id")
+
+  @@unique([organizationId, userId])
+  @@map("members")
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  TRIALING
+  CANCELED
+}
+
+enum PlanTier {
+  BASIC // Plano básico
+  PROFESSIONAL // Plano profissional
+  BUSINESS // Plano Business
+  TRIAL // Trial (7 dias grátis, apenas para Basic)
+  BETA // Usuários beta testers
+}
+
+model Subscription {
+  id               String             @id @default(uuid())
+  organizationId   String             @unique
+  planId           String // 🔥 Define o plano da assinatura
+  status           SubscriptionStatus
+  startedAt        DateTime           @default(now()) // 🔥 Data de início da assinatura
+  currentPeriodEnd DateTime // 🔥 Data de vencimento da assinatura
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  plan         Plan         @relation(fields: [planId], references: [id])
+
+  @@map("subscriptions")
+}
+
+model Plan {
+  id               String   @id @default(uuid())
+  name             String
+  price            Int // Em centavos (ex: R$ 10,00 => 1000)
+  description      String?
+  type             PlanTier // 🔥 Enum que define o tipo da assinatura
+  isTrialAvailable Boolean  @default(false) // 🔥 Define se o plano tem trial
+
+  maxOrganizations Int // Quantidade máxima de organizações no plano
+  maxIps           Int // 🔥 Limite de IPs para esse plano
+  maxRequests      Int // 🔥 Limite de requisições por mês
+  ipChangeLimit    Int // 🔥 Tempo mínimo para troca de IP (em horas)
+  supportLevel     String // 🔥 Suporte disponível nesse plano (E-mail, WhatsApp, Prioritário)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  subscriptions Subscription[]
+
+  @@map("plans")
+}
+
+model Addon {
+  id             String    @id @default(uuid())
+  organizationId String
+  type           AddonType
+  amount         Int // 🔥 Quantidade de requisições ou IPs comprados
+  price          Int // 🔥 Preço do addon em centavos
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("addons")
+}
+
+enum AddonType {
+  EXTRA_IP
+  EXTRA_REQUESTS
+  EARLY_IP_CHANGE
+}
