@@ -23,6 +23,7 @@ model User {
   invites            Invite[]
   member_on          Member[]
   owns_organizations Organization[]
+  QueryLog           QueryLog[]
 
   @@map("users")
 }
@@ -94,14 +95,15 @@ model Organization {
   owner   User   @relation(fields: [ownerId], references: [id])
   ownerId String
 
-  members      Member[]
-  subscription Subscription? // 🔥 A organização tem uma assinatura ativa
-  ipAddress    IpAddress?
-  addons       Addon[] // 🔥 Recursos extras comprados pela organização
-
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
-  Invite    Invite[]
+
+  members      Member[]
+  subscription Subscription? // 🔥 A organização tem uma assinatura ativa
+  ipAddress    IpAddress[]
+  addons       Addon[] // 🔥 Recursos extras comprados pela organização
+  Invite       Invite[]
+  QueryLog     QueryLog[]
 
   @@index([slug])
   @@map("organizations")
@@ -187,12 +189,28 @@ model Plan {
   @@map("plans")
 }
 
+model QueryLog {
+  id             String   @id @default(uuid())
+  organizationId String
+  userId         String
+  ipAddress      String
+  cpf            String
+  response       String
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([createdAt])
+  @@map("query_logs")
+}
+
 model Addon {
   id             String    @id @default(uuid())
   organizationId String
   type           AddonType
-  amount         Int // 🔥 Quantidade de requisições ou IPs comprados
-  price          Int // 🔥 Preço do addon em centavos
+  amount         Int
+  price          Int
 
   createdAt DateTime @default(now()) @map("created_at")
 

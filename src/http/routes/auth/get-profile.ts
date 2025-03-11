@@ -1,12 +1,10 @@
-
 import type { FastifyInstance } from 'fastify'
 import type { ZodTypeProvider } from 'fastify-type-provider-zod'
-import z from 'zod'
+import { z } from 'zod'
 
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/http/middlewares/auth'
 import { BadRequestError } from '@/http/_errors/bad-request-error'
-import { SubscriptionType } from '@prisma/client'
 
 export async function getProfile(app: FastifyInstance) {
   app
@@ -17,15 +15,14 @@ export async function getProfile(app: FastifyInstance) {
       {
         schema: {
           tags: ['Auth'],
-          summary: 'Authenticate with e-mail & password',
+          summary: 'Get authenticated user profile',
           security: [{ bearerAuth: [] }],
           response: {
             200: z.object({
               user: z.object({
                 id: z.string().uuid(),
-                name: z.string().nullable(),
+                name: z.string(),
                 email: z.string().email(),
-                subscription: z.nativeEnum(SubscriptionType),
                 avatarUrl: z.string().url().nullable(),
               }),
             }),
@@ -37,14 +34,12 @@ export async function getProfile(app: FastifyInstance) {
         const userId = await request.getCurrentUserId()
 
         const user = await prisma.user.findUnique({
+          where: { id: userId },
           select: {
             id: true,
             name: true,
             email: true,
             avatarUrl: true,
-          },
-          where: {
-            id: userId,
           },
         })
 
@@ -52,7 +47,9 @@ export async function getProfile(app: FastifyInstance) {
           throw new BadRequestError('User not found.')
         }
 
-        return reply.send({ user })
+        return reply.send({
+          user,
+        })
       },
     )
 }

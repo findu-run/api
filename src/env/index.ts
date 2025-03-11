@@ -8,12 +8,13 @@ const envSchemas = z.object({
   NODE_ENV: z.enum(['dev', 'test', 'production']).default('dev'),
   JWT_SECRET: z.string(),
   PORT: z.coerce.number().default(3333),
-  // GOOGLE_CLIENT_ID: z.string(),
-  // GOOGLE_CLIENT_SECRET: z.string(),
-  // GITHUB_OAUTH_CLIENT_ID: z.string(),
-  // GITHUB_OAUTH_CLIENT_SECRET: z.string(),
-  // GITHUB_OAUTH_CLIENT_REDIRECT_URI: z.string(),
+  GOOGLE_CLIENT_ID: z.string(),
+  GOOGLE_CLIENT_SECRET: z.string(),
+  GITHUB_OAUTH_CLIENT_ID: z.string(),
+  GITHUB_OAUTH_CLIENT_SECRET: z.string(),
+  GITHUB_OAUTH_CLIENT_REDIRECT_URI: z.string(),
   AES_ENCRYPTION_KEY: z.string(),
+  API_CONSULT: z.string()
 })
 
 const _env = envSchemas.safeParse(process.env)

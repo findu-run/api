@@ -17,12 +17,11 @@ export async function createAccount(app: FastifyInstance) {
           name: z.string().min(3, 'Name must have at least 3 characters'),
           email: z.string().email(),
           password: z.string().min(8, 'Password must be at least 8 characters long'),
-          organizationName: z.string().optional(), // 🔥 Novo campo: Permite criar uma org automaticamente
         }),
       },
     },
     async (request, reply) => {
-      const { name, email, password, organizationName } = request.body
+      const { name, email, password } = request.body
 
       const userWithSameEmail = await prisma.user.findUnique({
         where: { email },
@@ -59,48 +58,11 @@ export async function createAccount(app: FastifyInstance) {
         },
       })
 
-      // Se o usuário informou um nome de organização, criamos uma nova organização para ele
-      if (organizationName) {
-        const organization = await prisma.organization.create({
-          data: {
-            name: organizationName,
-            slug: organizationName.toLowerCase().replace(/ /g, '-'),
-            ownerId: user.id,
-            members: {
-              create: {
-                userId: user.id,
-                role: 'OWNER',
-              },
-            },
-          },
-        })
-
-        // Criar uma assinatura TRIAL para a nova organização (somente no plano Basic)
-        await prisma.subscription.create({
-          data: {
-            organizationId: organization.id,
-            planId: await getBasicPlanId(),
-            status: 'TRIALING',
-            type: 'TRIAL',
-            trialEndsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 dias de trial
-          },
-        })
-      }
-
-      return reply.status(201).send({ message: 'User created successfully' })
+      return reply.status(201).send({
+        message: 'User created successfully',
+        userId: user.id,
+        joinedOrganization: autoJoinOrganization ? autoJoinOrganization.id : null,
+      })
     },
   )
-}
-
-async function getBasicPlanId() {
-  const basicPlan = await prisma.plan.findFirst({
-    where: { type: 'BASIC' },
-    select: { id: true },
-  })
-
-  if (!basicPlan) {
-    throw new BadRequestError('Basic plan not found in the database.')
-  }
-
-  return basicPlan.id
 }
