@@ -147,7 +147,6 @@ enum PlanTier {
   PROFESSIONAL // Plano profissional
   BUSINESS // Plano Business
   TRIAL // Trial (7 dias grátis, apenas para Basic)
-  BETA // Usuários beta testers
 }
 
 model Subscription {

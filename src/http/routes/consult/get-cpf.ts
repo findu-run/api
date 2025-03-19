@@ -10,7 +10,7 @@ import { NotFoundError } from '@/http/_errors/not-found-error'
 import { BadRequestError } from '@/http/_errors/bad-request-error'
 import { env } from '@/env'
 
-export async function getCPFInfo(app: FastifyInstance) {
+export async function getCPF(app: FastifyInstance) {
   app
     .withTypeProvider<ZodTypeProvider>()
     .register(auth)

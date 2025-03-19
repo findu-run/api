@@ -12,6 +12,13 @@ import fastify from 'fastify'
 import { errorHandler } from '@/http/middlewares/error-handler'
 import fastifyRawBody from 'fastify-raw-body'
 import { env } from '@/env'
+import { authenticateWithPassword } from './routes/auth/authenticate-with-password'
+import { createAccount } from './routes/auth/create-account'
+import { getProfile } from './routes/auth/get-profile'
+import { createOrganization } from './routes/organization/create-organization'
+import { addIpAddress } from './routes/organization/add-ip'
+import { getOrganizations } from './routes/organization/get-organizations'
+import { getCPF } from './routes/consult/get-cpf'
 
 
 export const app = fastify().withTypeProvider<ZodTypeProvider>()
@@ -50,4 +57,16 @@ app.register(fastifySwaggerUi, {
 app.setSerializerCompiler(serializerCompiler)
 app.setValidatorCompiler(validatorCompiler)
 app.setErrorHandler(errorHandler)
+
+
+app.register(createAccount)
+app.register(authenticateWithPassword)
+app.register(getProfile)
+
+
+app.register(createOrganization)
+app.register(addIpAddress)
+app.register(getOrganizations)
+
+app.register(getCPF)
 
