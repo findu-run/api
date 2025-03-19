@@ -1,14 +1,13 @@
 import type { FastifyInstance } from 'fastify'
 import type { ZodTypeProvider } from 'fastify-type-provider-zod'
 import { z } from 'zod'
-import axios from 'axios'
 import dayjs from 'dayjs'
 
 import { auth } from '@/http/middlewares/auth'
 import { prisma } from '@/lib/prisma'
 import { NotFoundError } from '@/http/_errors/not-found-error'
 import { BadRequestError } from '@/http/_errors/bad-request-error'
-import { env } from '@/env'
+import { fetchCPFData } from '@/http/external/cpf'
 
 export async function getCPF(app: FastifyInstance) {
   app
@@ -30,7 +29,8 @@ export async function getCPF(app: FastifyInstance) {
               cpf: z.string(),
               name: z.string(),
               birthDate: z.string(),
-              status: z.enum(['VALID', 'INVALID', 'RESTRICTED']),
+              motherName: z.string(),
+              gender: z.string(),
             }),
           },
         },
@@ -62,6 +62,8 @@ export async function getCPF(app: FastifyInstance) {
           throw new NotFoundError('Organization not found.')
         }
 
+        console.log(userIp)
+
         if (!organization.subscription || organization.subscription.status !== 'ACTIVE') {
           throw new BadRequestError('Organization does not have an active subscription.')
         }
@@ -86,24 +88,9 @@ export async function getCPF(app: FastifyInstance) {
           throw new BadRequestError('Monthly request limit reached.')
         }
 
-        // 🔥 Enviar requisição para API externa
-        let externalAPIResponse
-        try {
-          externalAPIResponse = await axios.get(`${env.API_CONSULT}?cpf=${cpf}`)
-        } catch (error) {
-          console.error('Error fetching data from external API:', error)
-          throw new BadRequestError('Failed to fetch CPF data.')
-        }
 
-        const rawData = externalAPIResponse.data
-
-        // 🔥 Padronizar resposta
-        const userData = {
-          cpf: rawData.CPF,
-          name: rawData.NOME,
-          birthDate: rawData.NASCIMENTO,
-          status: rawData.STATUS,
-        }
+// 🔥 Obter dados da API externa
+      const userData = await fetchCPFData(cpf)
 
         // 🔥 Registrar log da consulta
         await prisma.queryLog.create({
