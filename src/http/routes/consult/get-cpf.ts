@@ -3,7 +3,6 @@ import type { ZodTypeProvider } from 'fastify-type-provider-zod'
 import { z } from 'zod'
 import dayjs from 'dayjs'
 
-import { auth } from '@/http/middlewares/auth'
 import { prisma } from '@/lib/prisma'
 import { NotFoundError } from '@/http/_errors/not-found-error'
 import { BadRequestError } from '@/http/_errors/bad-request-error'
@@ -12,7 +11,6 @@ import { fetchCPFData } from '@/http/external/cpf'
 export async function getCPF(app: FastifyInstance) {
   app
     .withTypeProvider<ZodTypeProvider>()
-    .register(auth)
     .get(
       '/organizations/:slug/cpf/:cpf',
       {
@@ -38,14 +36,15 @@ export async function getCPF(app: FastifyInstance) {
       async (request, reply) => {
         const { slug, cpf } = request.params
         const userId = await request.getCurrentUserId()
-        // const userIp = request.ip
 
         const userIp = Array.isArray(request.headers['x-forwarded-for'])
-        ? request.headers['x-forwarded-for'][0] // Se for array, pega o primeiro elemento
+        ? request.headers['x-forwarded-for'][0]
         : request.headers['x-forwarded-for']?.split(',')[0].trim() || request.socket.remoteAddress;
       
 
-  console.log("User IP:", userIp)
+        if(!userIp){
+          throw new NotFoundError('Ip not found')
+        }
 
         // 🔥 Buscar a organização e validar acesso
         const organization = await prisma.organization.findUnique({
@@ -68,8 +67,6 @@ export async function getCPF(app: FastifyInstance) {
         if (!organization) {
           throw new NotFoundError('Organization not found.')
         }
-
-        console.log(userIp)
 
         if (!organization.subscription || organization.subscription.status !== 'ACTIVE') {
           throw new BadRequestError('Organization does not have an active subscription.')
@@ -96,8 +93,8 @@ export async function getCPF(app: FastifyInstance) {
         }
 
 
-// 🔥 Obter dados da API externa
-      const userData = await fetchCPFData(cpf)
+        // 🔥 Obter dados da API externa
+        const userData = await fetchCPFData(cpf)
 
         // 🔥 Registrar log da consulta
         await prisma.queryLog.create({
