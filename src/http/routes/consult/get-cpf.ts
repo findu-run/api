@@ -35,15 +35,14 @@ export async function getCPF(app: FastifyInstance) {
       },
       async (request, reply) => {
         const { slug, cpf } = request.params
-        const userId = await request.getCurrentUserId()
 
+        // 📌 Obtendo IP corretamente, lidando com proxies
         const userIp = Array.isArray(request.headers['x-forwarded-for'])
-        ? request.headers['x-forwarded-for'][0]
-        : request.headers['x-forwarded-for']?.split(',')[0].trim() || request.socket.remoteAddress;
-      
+          ? request.headers['x-forwarded-for'][0]
+          : request.headers['x-forwarded-for']?.split(',')[0].trim() || request.socket.remoteAddress;
 
-        if(!userIp){
-          throw new NotFoundError('Ip not found')
+        if (!userIp) {
+          throw new BadRequestError('IP address not found.');
         }
 
         // 🔥 Buscar a organização e validar acesso
@@ -62,52 +61,50 @@ export async function getCPF(app: FastifyInstance) {
             },
             ipAddress: { select: { ip: true } },
           },
-        })
+        });
 
         if (!organization) {
-          throw new NotFoundError('Organization not found.')
+          throw new NotFoundError('Organization not found.');
         }
 
         if (!organization.subscription || organization.subscription.status !== 'ACTIVE') {
-          throw new BadRequestError('Organization does not have an active subscription.')
+          throw new BadRequestError('Organization does not have an active subscription.');
         }
 
         // 🔥 Verificar se o IP é autorizado
-        const authorizedIps = organization.ipAddress.map(ip => ip.ip)
+        const authorizedIps = organization.ipAddress.map(ip => ip.ip);
         if (!authorizedIps.includes(userIp)) {
-          throw new BadRequestError('Unauthorized IP. Your organization does not have access from this IP.')
+          throw new BadRequestError('Unauthorized IP. Your organization does not have access from this IP.');
         }
 
         // 🔥 Verificar limite de requisições mensais
-        const startOfMonth = dayjs().startOf('month').toDate()
+        const startOfMonth = dayjs().startOf('month').toDate();
         const requestsMade = await prisma.queryLog.count({
           where: {
             organizationId: organization.id,
             createdAt: { gte: startOfMonth },
           },
-        })
+        });
 
-        const requestLimit = organization.subscription.plan?.maxRequests || 0
+        const requestLimit = organization.subscription.plan?.maxRequests || 0;
         if (requestsMade >= requestLimit) {
-          throw new BadRequestError('Monthly request limit reached.')
+          throw new BadRequestError('Monthly request limit reached.');
         }
 
-
         // 🔥 Obter dados da API externa
-        const userData = await fetchCPFData(cpf)
+        const userData = await fetchCPFData(cpf);
 
-        // 🔥 Registrar log da consulta
+        // 🔥 Registrar log da consulta, incluindo o tipo de consulta
         await prisma.queryLog.create({
           data: {
-            cpf,
-            userId,
             organizationId: organization.id,
             ipAddress: userIp,
-            response: JSON.stringify(userData),
+            status: userData ? 'SUCCESS' : 'FAILED', // 🔥 Adiciona status da consulta
+            queryType: 'CPF', // 🔥 Tipo da consulta
           },
-        })
+        });
 
-        return reply.send(userData)
+        return reply.send(userData);
       }
-    )
+    );
 }

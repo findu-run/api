@@ -22,19 +22,18 @@ export async function getOrganizationLogs(app: FastifyInstance) {
             slug: z.string(),
           }),
           querystring: z.object({
-            page: z.number().min(1).default(1),
-            perPage: z.number().min(1).max(100).default(20),
+            page: z.coerce.number().min(1).default(1), // 🔥 Ajuste para garantir conversão correta
+            perPage: z.coerce.number().min(1).max(100).default(20),
           }),
           response: {
             200: z.object({
               logs: z.array(
                 z.object({
                   id: z.string().uuid(),
-                  cpf: z.string(),
-                  response: z.string(),
+                  status: z.string(), // 🔥 Adicionamos status para análise de sucesso/falha
+                  queryType: z.string(), // 🔥 Agora identifica qual tipo de consulta foi feita
                   ipAddress: z.string(),
-                  userId: z.string().uuid(),
-                  createdAt: z.date(),
+                  createdAt: z.coerce.date(),
                 })
               ),
               totalRequests: z.number(),
@@ -48,11 +47,11 @@ export async function getOrganizationLogs(app: FastifyInstance) {
 
         const userId = await request.getCurrentUserId()
         const organization = await prisma.organization.findUnique({
-          where: {slug}
+          where: { slug },
         })
 
-        if(!organization){
-          throw new NotFoundError()
+        if (!organization) {
+          throw new NotFoundError('Organization not found.')
         }
 
         await ensureIsAdminOrOwner(userId, organization.id)
@@ -65,10 +64,9 @@ export async function getOrganizationLogs(app: FastifyInstance) {
           where: { organizationId: organization.id },
           select: {
             id: true,
-            cpf: true,
-            response: true,
+            status: true, // ✅ Agora armazenamos o status da consulta
+            queryType: true, // ✅ Agora armazenamos o tipo de consulta (CPF, CNPJ, Placa, etc.)
             ipAddress: true,
-            userId: true,
             createdAt: true,
           },
           orderBy: { createdAt: 'desc' },
@@ -76,7 +74,10 @@ export async function getOrganizationLogs(app: FastifyInstance) {
           take: perPage,
         })
 
-        return { logs, totalRequests }
+        return {
+          logs,
+          totalRequests,
+        }
       }
     )
 }

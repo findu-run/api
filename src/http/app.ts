@@ -19,6 +19,13 @@ import { createOrganization } from './routes/organization/create-organization'
 import { addIpAddress } from './routes/organization/add-ip'
 import { getOrganizations } from './routes/organization/get-organizations'
 import { getCPF } from './routes/consult/get-cpf'
+import { getOrganization } from './routes/organization/get-organization'
+import { removeIpAddress } from './routes/organization/remove-ip'
+import { updateIpAddress } from './routes/organization/update-ip'
+import { transferOrganization } from './routes/organization/transfer-organization'
+import { shutdownOrganization } from './routes/organization/shutdown-organization'
+import { getOrganizationLogs } from './routes/organization/get-organization-logs'
+import { getOrganizationMetrics } from './routes/metrics/get-organization-metrics'
 
 
 export const app = fastify().withTypeProvider<ZodTypeProvider>()
@@ -65,8 +72,17 @@ app.register(getProfile)
 
 
 app.register(createOrganization)
-app.register(addIpAddress)
 app.register(getOrganizations)
+app.register(getOrganization)
+app.register(transferOrganization)
+app.register(shutdownOrganization)
+app.register(getOrganizationLogs)
+
+app.register(addIpAddress)
+app.register(updateIpAddress)
+app.register(removeIpAddress)
 
 app.register(getCPF)
 
+
+app.register(getOrganizationMetrics)
