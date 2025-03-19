@@ -1,19 +1,29 @@
+# Usa Node 23 com Alpine para um ambiente leve
 FROM node:23-alpine AS base
 
-# Defina o diretório de trabalho dentro do contêiner
+# Habilita o Corepack para usar pnpm e instala pnpm
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
+# Define o diretório de trabalho
 WORKDIR /app
 
-# Copie apenas os arquivos necessários para instalar as dependências
-COPY package.json package-lock.json* pnpm-lock.yaml* ./
+# Copia os arquivos de configuração de pacotes antes para otimizar cache
+COPY package.json pnpm-lock.yaml ./
 
-# Instale as dependências de produção
-RUN npm install --only=production
+# Instala as dependências de produção
+RUN pnpm install --frozen-lockfile --production
 
-# Copie o restante do código da aplicação
+# Copia o restante do código do projeto
 COPY . .
 
-# Construção do código TypeScript
-RUN npm run build
+# Executa as migrações do banco de dados
+RUN pnpx prisma migrate deploy
 
-# Comando padrão para iniciar o servidor
+# Gera o cliente Prisma
+RUN pnpx prisma generate
+
+# Constrói o código TypeScript
+RUN pnpm run build
+
+# Comando para iniciar a aplicação
 CMD ["node", "dist/server.js"]
