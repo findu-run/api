@@ -11,10 +11,14 @@ WORKDIR /app
 COPY package.json pnpm-lock.yaml ./
 
 # Instala as dependências de produção
-RUN pnpm install --frozen-lockfile --production
+RUN pnpm install --frozen-lockfile
 
 # Copia o restante do código do projeto
 COPY . .
+
+# Define a variável DATABASE_URL no ambiente do contêiner
+ARG DATABASE_URL
+ENV DATABASE_URL=${DATABASE_URL}
 
 # Executa as migrações do banco de dados
 RUN pnpx prisma migrate deploy
