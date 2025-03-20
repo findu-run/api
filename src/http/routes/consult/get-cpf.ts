@@ -48,66 +48,82 @@ export async function getCPF(app: FastifyInstance) {
           throw new BadRequestError('IP address not found.');
         }
 
-        // 🔥 Buscar a organização e validar acesso
-        const organization = await prisma.organization.findUnique({
-          where: { slug },
-          select: {
-            id: true,
-            name: true,
-            subscription: {
-              select: {
-                status: true,
-                plan: {
-                  select: { maxRequests: true },
+        try {
+          // 🔥 Buscar a organização e validar acesso
+          const organization = await prisma.organization.findUnique({
+            where: { slug },
+            select: {
+              id: true,
+              name: true,
+              subscription: {
+                select: {
+                  status: true,
+                  plan: {
+                    select: { maxRequests: true },
+                  },
                 },
               },
+              ipAddress: { select: { ip: true } },
             },
-            ipAddress: { select: { ip: true } },
-          },
-        });
+          });
 
-        if (!organization) {
-          throw new NotFoundError('Organization not found.');
+          if (!organization) {
+            throw new NotFoundError('Organization not found.');
+          }
+
+          if (!organization.subscription || organization.subscription.status !== 'ACTIVE') {
+            throw new BadRequestError('Organization does not have an active subscription.');
+          }
+
+          // 🔥 Verificar se o IP é autorizado
+          const authorizedIps = organization.ipAddress.map(ip => ip.ip);
+          if (!authorizedIps.includes(userIp)) {
+            throw new BadRequestError('Unauthorized IP. Your organization does not have access from this IP.');
+          }
+
+          // 🔥 Verificar limite de requisições mensais
+          const startOfMonth = dayjs().startOf('month').toDate();
+          const requestsMade = await prisma.queryLog.count({
+            where: {
+              organizationId: organization.id,
+              createdAt: { gte: startOfMonth },
+            },
+          });
+
+          const requestLimit = organization.subscription.plan?.maxRequests || 0;
+          if (requestsMade >= requestLimit) {
+            throw new BadRequestError('Monthly request limit reached.');
+          }
+
+          // 🔥 Obter dados da API externa
+          const userData = await fetchCPFData(cpf);
+
+          // 🔥 Registrar log da consulta bem-sucedida
+          await prisma.queryLog.create({
+            data: {
+              organizationId: organization.id,
+              ipAddress: userIp,
+              status: 'SUCCESS', // ✅ Indica sucesso
+              queryType: 'CPF',
+            },
+          });
+
+          return reply.send(userData);
+        } catch (error) {
+          console.error('Error in CPF lookup:', error);
+
+          // 🔥 Registrar falha no log
+          await prisma.queryLog.create({
+            data: {
+              organizationId: slug, // 🔥 Ainda salvamos o slug para rastreamento
+              ipAddress: userIp,
+              status: 'FAILED', // 🔥 Indica falha
+              queryType: 'CPF',
+            },
+          });
+
+          throw error; // 🔥 Retorna o erro para ser tratado corretamente
         }
-
-        if (!organization.subscription || organization.subscription.status !== 'ACTIVE') {
-          throw new BadRequestError('Organization does not have an active subscription.');
-        }
-
-        // 🔥 Verificar se o IP é autorizado
-        const authorizedIps = organization.ipAddress.map(ip => ip.ip);
-        if (!authorizedIps.includes(userIp)) {
-          throw new BadRequestError('Unauthorized IP. Your organization does not have access from this IP.');
-        }
-
-        // 🔥 Verificar limite de requisições mensais
-        const startOfMonth = dayjs().startOf('month').toDate();
-        const requestsMade = await prisma.queryLog.count({
-          where: {
-            organizationId: organization.id,
-            createdAt: { gte: startOfMonth },
-          },
-        });
-
-        const requestLimit = organization.subscription.plan?.maxRequests || 0;
-        if (requestsMade >= requestLimit) {
-          throw new BadRequestError('Monthly request limit reached.');
-        }
-
-        // 🔥 Obter dados da API externa
-        const userData = await fetchCPFData(cpf);
-
-        // 🔥 Registrar log da consulta, incluindo o tipo de consulta
-        await prisma.queryLog.create({
-          data: {
-            organizationId: organization.id,
-            ipAddress: userIp,
-            status: userData ? 'SUCCESS' : 'FAILED', // 🔥 Adiciona status da consulta
-            queryType: 'CPF', // 🔥 Tipo da consulta
-          },
-        });
-
-        return reply.send(userData);
       }
     );
 }
