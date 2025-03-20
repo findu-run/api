@@ -35,7 +35,7 @@ export async function getCPF(app: FastifyInstance) {
           },
         },
       },
-      async (request, reply) => {
+      async (request) => {
         const { slug } = request.params
         const { cpf } = request.query
 
@@ -45,6 +45,15 @@ export async function getCPF(app: FastifyInstance) {
           : request.headers['x-forwarded-for']?.split(',')[0].trim() || request.socket.remoteAddress;
 
         if (!userIp) {
+          await prisma.queryLog.create({
+            data: {
+              organizationId: slug,
+              ipAddress: 'UNKNOWN',
+              status: 'FAILED',
+              queryType: 'CPF',
+            },
+          });
+
           throw new BadRequestError('IP address not found.');
         }
 
@@ -67,16 +76,43 @@ export async function getCPF(app: FastifyInstance) {
         });
 
         if (!organization) {
+          await prisma.queryLog.create({
+            data: {
+              organizationId: slug,
+              ipAddress: userIp,
+              status: 'FAILED',
+              queryType: 'CPF',
+            },
+          });
+
           throw new NotFoundError('Organization not found.');
         }
 
         if (!organization.subscription || organization.subscription.status !== 'ACTIVE') {
+          await prisma.queryLog.create({
+            data: {
+              organizationId: organization.id,
+              ipAddress: userIp,
+              status: 'FAILED',
+              queryType: 'CPF',
+            },
+          });
+
           throw new BadRequestError('Organization does not have an active subscription.');
         }
 
         // 🔥 Verificar se o IP é autorizado
         const authorizedIps = organization.ipAddress.map(ip => ip.ip);
         if (!authorizedIps.includes(userIp)) {
+          await prisma.queryLog.create({
+            data: {
+              organizationId: organization.id,
+              ipAddress: userIp,
+              status: 'FAILED',
+              queryType: 'CPF',
+            },
+          });
+
           throw new BadRequestError('Unauthorized IP. Your organization does not have access from this IP.');
         }
 
@@ -91,23 +127,46 @@ export async function getCPF(app: FastifyInstance) {
 
         const requestLimit = organization.subscription.plan?.maxRequests || 0;
         if (requestsMade >= requestLimit) {
+          await prisma.queryLog.create({
+            data: {
+              organizationId: organization.id,
+              ipAddress: userIp,
+              status: 'FAILED',
+              queryType: 'CPF',
+            },
+          });
+
           throw new BadRequestError('Monthly request limit reached.');
         }
 
-        // 🔥 Obter dados da API externa
-        const userData = await fetchCPFData(cpf);
+        // 🔥 Tentar obter dados da API externa
+        let userData;
+        try {
+          userData = await fetchCPFData(cpf);
+        } catch (error) {
+          await prisma.queryLog.create({
+            data: {
+              organizationId: organization.id,
+              ipAddress: userIp,
+              status: 'FAILED',
+              queryType: 'CPF',
+            },
+          });
 
-        // 🔥 Registrar log da consulta, incluindo o tipo de consulta
+          throw new BadRequestError('Failed to fetch CPF data.');
+        }
+
+        // 🔥 Registrar log da consulta bem-sucedida
         await prisma.queryLog.create({
           data: {
             organizationId: organization.id,
             ipAddress: userIp,
-            status: userData ? 'SUCCESS' : 'FAILED', // 🔥 Adiciona status da consulta
-            queryType: 'CPF', // 🔥 Tipo da consulta
+            status: 'SUCCESS',
+            queryType: 'CPF',
           },
         });
 
-        return reply.send(userData);
+        return userData;
       }
     );
 }
