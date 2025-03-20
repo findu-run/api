@@ -36,7 +36,15 @@ export async function getCPF(app: FastifyInstance) {
     async (request, reply) => {
       const { slug } = request.params
       const { cpf } = request.query
-      const userIp = request.ip
+
+      const userIp = Array.isArray(request.headers['x-forwarded-for'])
+        ? request.headers['x-forwarded-for'][0]
+        : request.headers['x-forwarded-for']?.split(',')[0].trim() ||
+          request.socket.remoteAddress
+
+      if (!userIp) {
+        throw new NotFoundError('Ip not found')
+      }
 
       // 🔥 Buscar a organização e validar acesso
       const organization = await prisma.organization.findUnique({
