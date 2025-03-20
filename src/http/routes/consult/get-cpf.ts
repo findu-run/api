@@ -69,6 +69,8 @@ export async function getCPF(app: FastifyInstance) {
         )
       }
 
+      console.log(userIp)
+
       // 🔥 Verificar se o IP é autorizado
       const authorizedIps = organization.ipAddress.map((ip) => ip.ip)
       if (!authorizedIps.includes(userIp)) {
