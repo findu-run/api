@@ -12,7 +12,7 @@ export async function getOrganizationBilling(app: FastifyInstance) {
     .withTypeProvider<ZodTypeProvider>()
     .register(auth)
     .get(
-      '/organizations/:slug/billing',
+      '/organizations/:slug/billing/complete',
       {
         schema: {
           tags: ['Billing'],
@@ -53,15 +53,15 @@ export async function getOrganizationBilling(app: FastifyInstance) {
         const { slug } = request.params
         const userId = await request.getCurrentUserId()
 
-         const organization = await prisma.organization.findUnique({
-                 where: {slug}
-               })
-       
-               if(!organization){
-                 throw new NotFoundError()
-               }
-       
-               await ensureIsAdminOrOwner(userId, organization.id)
+        const organization = await prisma.organization.findUnique({
+          where: { slug },
+        })
+
+        if (!organization) {
+          throw new NotFoundError()
+        }
+
+        await ensureIsAdminOrOwner(userId, organization.id)
         await ensureIsAdminOrOwner(userId, organization.id)
 
         // 🔥 Buscar detalhes do plano
@@ -108,9 +108,15 @@ export async function getOrganizationBilling(app: FastifyInstance) {
 
         // 🔥 Calcular custos
         const extraIpsPrice = extraIpsAmount * EXTRA_IP_UNIT_PRICE
-        const extraRequestsPrice = extraRequestsAmount * EXTRA_REQUESTS_UNIT_PRICE
-        const earlyIpChangesPrice = earlyIpChangesAmount * EARLY_IP_CHANGE_UNIT_PRICE
-        const total = subscription.plan.price + extraIpsPrice + extraRequestsPrice + earlyIpChangesPrice
+        const extraRequestsPrice =
+          extraRequestsAmount * EXTRA_REQUESTS_UNIT_PRICE
+        const earlyIpChangesPrice =
+          earlyIpChangesAmount * EARLY_IP_CHANGE_UNIT_PRICE
+        const total =
+          subscription.plan.price +
+          extraIpsPrice +
+          extraRequestsPrice +
+          earlyIpChangesPrice
 
         return {
           billing: {
@@ -136,6 +142,6 @@ export async function getOrganizationBilling(app: FastifyInstance) {
             total,
           },
         }
-      }
+      },
     )
 }
