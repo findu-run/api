@@ -23,7 +23,6 @@ model User {
   invites            Invite[]
   member_on          Member[]
   owns_organizations Organization[]
-  QueryLog           QueryLog[]
 
   @@map("users")
 }
@@ -197,8 +196,6 @@ model QueryLog {
   createdAt      DateTime @default(now()) @map("created_at")
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  User         User?        @relation(fields: [userId], references: [id])
-  userId       String?
 
   @@index([createdAt])
   @@map("query_logs")

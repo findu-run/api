@@ -1,8 +1,9 @@
 import { env } from "@/env"
 import axios from "axios"
 import { BadRequestError } from "../_errors/bad-request-error"
+import { delay } from "@/utils/delay";
 
-interface CpfDataResponse{
+export interface CpfDataResponse{
     cpf: string;
     name: string;
     birthDate: string;
@@ -12,6 +13,7 @@ interface CpfDataResponse{
 
 export async function fetchCPFData(cpf: string): Promise<CpfDataResponse> {
   try {
+    await delay(5000);
     const response = await axios.get(`${env.API_CONSULT}?cpf=${cpf}`)
     
     return {

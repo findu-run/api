@@ -26,7 +26,11 @@ import { transferOrganization } from './routes/organization/transfer-organizatio
 import { shutdownOrganization } from './routes/organization/shutdown-organization'
 import { getOrganizationLogs } from './routes/organization/get-organization-logs'
 import { getOrganizationMetrics } from './routes/metrics/get-organization-metrics'
-
+import { cancelSubscription } from './routes/billing/cancel-subscription'
+import { generatePaymentLink } from './routes/billing/generate-payment-link'
+import { getBillingDetails } from './routes/billing/get-billing-details'
+import { getOrganizationBilling } from './routes/billing/get-organization-billing'
+import { checkRequestLimit } from './routes/organization/check-request-limit'
 
 export const app = fastify().withTypeProvider<ZodTypeProvider>()
 
@@ -65,11 +69,9 @@ app.setSerializerCompiler(serializerCompiler)
 app.setValidatorCompiler(validatorCompiler)
 app.setErrorHandler(errorHandler)
 
-
 app.register(createAccount)
 app.register(authenticateWithPassword)
 app.register(getProfile)
-
 
 app.register(createOrganization)
 app.register(getOrganizations)
@@ -79,10 +81,15 @@ app.register(shutdownOrganization)
 app.register(getOrganizationLogs)
 
 app.register(addIpAddress)
+app.register(checkRequestLimit)
 app.register(updateIpAddress)
 app.register(removeIpAddress)
 
 app.register(getCPF)
 
-
 app.register(getOrganizationMetrics)
+
+app.register(cancelSubscription)
+app.register(generatePaymentLink)
+app.register(getBillingDetails)
+app.register(getOrganizationBilling)
