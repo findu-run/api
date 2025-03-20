@@ -12,7 +12,7 @@ export async function getCPF(app: FastifyInstance) {
   app
     .withTypeProvider<ZodTypeProvider>()
     .get(
-      '/organizations/:slug/cpf/:cpf',
+      '/organizations/:slug/cpf',
       {
         schema: {
           tags: ['CPF'],
@@ -20,6 +20,8 @@ export async function getCPF(app: FastifyInstance) {
           security: [{ bearerAuth: [] }],
           params: z.object({
             slug: z.string(),
+          }),
+          querystring: z.object({
             cpf: z.string().regex(/^\d{11}$/, 'Invalid CPF format'),
           }),
           response: {
@@ -34,7 +36,8 @@ export async function getCPF(app: FastifyInstance) {
         },
       },
       async (request, reply) => {
-        const { slug, cpf } = request.params
+        const { slug } = request.params
+        const { cpf } = request.query
 
         // 📌 Obtendo IP corretamente, lidando com proxies
         const userIp = Array.isArray(request.headers['x-forwarded-for'])
