@@ -7,6 +7,7 @@ import { prisma } from '@/lib/prisma'
 import { createSlug } from '@/utils/create-slug'
 import { auth } from '@/http/middlewares/auth'
 import { BadRequestError } from '@/http/_errors/bad-request-error'
+import { NotFoundError } from '@/http/_errors/not-found-error'
 
 export async function createOrganization(app: FastifyInstance) {
   app
@@ -81,12 +82,22 @@ export async function createOrganization(app: FastifyInstance) {
 
         // 🔥 Definir o período atual da assinatura (30 dias para planos pagos)
         const currentPeriodEnd = trialEndsAt ?? dayjs().add(30, 'day').toDate()
+        
+        const betaPlanId = await prisma.plan.findFirst({
+          where: {
+            type: 'TRIAL'
+          }
+        })
+
+        if(!betaPlanId){
+          throw new NotFoundError('Not faound plan')
+        }
 
         // 🔥 Criar a assinatura (Subscription)
         const subscription = await prisma.subscription.create({
           data: {
             organizationId: organization.id,
-            planId: plan.id,
+            planId: betaPlanId.id,
             status: plan.isTrialAvailable ? 'TRIALING' : 'ACTIVE',
             currentPeriodEnd,
           },
