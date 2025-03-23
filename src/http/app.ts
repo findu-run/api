@@ -32,6 +32,9 @@ import { getBillingDetails } from './routes/billing/get-billing-details'
 import { getOrganizationBilling } from './routes/billing/get-organization-billing'
 import { checkRequestLimit } from './routes/organization/check-request-limit'
 import { getIpMetrics } from './routes/metrics/by-ip'
+import { updateMember } from './routes/members/update-member'
+import { getMembers } from './routes/members/get-members'
+import { removeMember } from './routes/members/remove-member'
 
 export const app = fastify().withTypeProvider<ZodTypeProvider>()
 
@@ -95,3 +98,7 @@ app.register(cancelSubscription)
 app.register(generatePaymentLink)
 app.register(getBillingDetails)
 app.register(getOrganizationBilling)
+
+app.register(getMembers)
+app.register(removeMember)
+app.register(updateMember)
