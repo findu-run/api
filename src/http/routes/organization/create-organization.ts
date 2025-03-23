@@ -24,7 +24,7 @@ export async function createOrganization(app: FastifyInstance) {
             name: z.string(),
             domain: z.string().nullish(),
             shouldAttachUsersByDomain: z.boolean().optional(),
-            planId: z.string().uuid(),
+            planId: z.string().optional(),
           }),
           response: {
             201: z.object({
