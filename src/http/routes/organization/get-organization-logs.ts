@@ -25,6 +25,8 @@ export async function getOrganizationLogs(app: FastifyInstance) {
             page: z.coerce.number().min(1).default(1),
             perPage: z.coerce.number().min(1).max(100).default(20),
             searchTerm: z.string().optional(),
+            status: z.enum(['SUCCESS', 'FAILED']).optional(), // ✅ Adicionado
+
           }),          
           response: {
             200: z.object({
@@ -46,7 +48,7 @@ export async function getOrganizationLogs(app: FastifyInstance) {
       },
       async (request) => {
         const { slug } = request.params
-        const { page, perPage, searchTerm } = request.query
+        const { page, perPage, searchTerm, status } = request.query
 
         const userId = await request.getCurrentUserId()
         const organization = await prisma.organization.findUnique({
@@ -63,23 +65,12 @@ export async function getOrganizationLogs(app: FastifyInstance) {
           organizationId: organization.id,
           ...(searchTerm && {
             OR: [
-              {
-                ipAddress: {
-                  contains: searchTerm,
-                },
-              },
-              {
-                queryType: {
-                  contains: searchTerm,
-                },
-              },
-              {
-                status: {
-                  contains: searchTerm,
-                },
-              },
+              { ipAddress: { contains: searchTerm } },
+              { queryType: { contains: searchTerm } },
+              { status: { contains: searchTerm } },
             ],
           }),
+          ...(status && { status }), 
         }
         
         const totalRequests = await prisma.queryLog.count({ where })
