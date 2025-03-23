@@ -22,9 +22,10 @@ export async function getOrganizationLogs(app: FastifyInstance) {
             slug: z.string(),
           }),
           querystring: z.object({
-            page: z.coerce.number().min(1).default(1), // 🔥 Ajuste para garantir conversão correta
+            page: z.coerce.number().min(1).default(1),
             perPage: z.coerce.number().min(1).max(100).default(20),
-          }),
+            searchTerm: z.string().optional(),
+          }),          
           response: {
             200: z.object({
               logs: z.array(
@@ -37,13 +38,15 @@ export async function getOrganizationLogs(app: FastifyInstance) {
                 })
               ),
               totalRequests: z.number(),
+              totalPages: z.number(), // ✅ aqui também
+
             }),
           },
         },
       },
       async (request) => {
         const { slug } = request.params
-        const { page, perPage } = request.query
+        const { page, perPage, searchTerm } = request.query
 
         const userId = await request.getCurrentUserId()
         const organization = await prisma.organization.findUnique({
@@ -56,16 +59,37 @@ export async function getOrganizationLogs(app: FastifyInstance) {
 
         await ensureIsAdminOrOwner(userId, organization.id)
 
-        const totalRequests = await prisma.queryLog.count({
-          where: { organizationId: organization.id },
-        })
-
+        const where = {
+          organizationId: organization.id,
+          ...(searchTerm && {
+            OR: [
+              {
+                ipAddress: {
+                  contains: searchTerm,
+                },
+              },
+              {
+                queryType: {
+                  contains: searchTerm,
+                },
+              },
+              {
+                status: {
+                  contains: searchTerm,
+                },
+              },
+            ],
+          }),
+        }
+        
+        const totalRequests = await prisma.queryLog.count({ where })
+        
         const logs = await prisma.queryLog.findMany({
-          where: { organizationId: organization.id },
+          where,
           select: {
             id: true,
-            status: true, // ✅ Agora armazenamos o status da consulta
-            queryType: true, // ✅ Agora armazenamos o tipo de consulta (CPF, CNPJ, Placa, etc.)
+            status: true,
+            queryType: true,
             ipAddress: true,
             createdAt: true,
           },
@@ -77,6 +101,7 @@ export async function getOrganizationLogs(app: FastifyInstance) {
         return {
           logs,
           totalRequests,
+          totalPages: Math.ceil(totalRequests / perPage),
         }
       }
     )
