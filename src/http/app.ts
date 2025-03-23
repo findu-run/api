@@ -35,6 +35,7 @@ import { getIpMetrics } from './routes/metrics/by-ip'
 import { updateMember } from './routes/members/update-member'
 import { getMembers } from './routes/members/get-members'
 import { removeMember } from './routes/members/remove-member'
+import { getMembership } from './routes/organization/get-membership'
 
 export const app = fastify().withTypeProvider<ZodTypeProvider>()
 
@@ -81,6 +82,7 @@ app.register(createOrganization)
 app.register(getOrganizations)
 app.register(getOrganization)
 app.register(transferOrganization)
+app.register(getMembership)
 app.register(shutdownOrganization)
 app.register(getOrganizationLogs)
 
