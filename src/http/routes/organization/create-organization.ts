@@ -18,13 +18,12 @@ export async function createOrganization(app: FastifyInstance) {
       {
         schema: {
           tags: ['Organizations'],
-          summary: 'Create a new organization with a subscription plan',
+          summary: 'Create a new organization with a trial plan',
           security: [{ bearerAuth: [] }],
           body: z.object({
             name: z.string(),
             domain: z.string().nullish(),
             shouldAttachUsersByDomain: z.boolean().optional(),
-            planId: z.string().optional(),
           }),
           response: {
             201: z.object({
@@ -38,16 +37,7 @@ export async function createOrganization(app: FastifyInstance) {
       },
       async (request, reply) => {
         const userId = await request.getCurrentUserId()
-        const { name, domain, shouldAttachUsersByDomain, planId } = request.body
-
-        const plan = await prisma.plan.findUnique({
-          where: { id: planId },
-          select: { id: true, isTrialAvailable: true },
-        })
-
-        if (!plan) {
-          throw new BadRequestError('Invalid plan selected.')
-        }
+        const { name, domain, shouldAttachUsersByDomain } = request.body
 
         if (domain) {
           const organizationByDomain = await prisma.organization.findUnique({
@@ -59,6 +49,16 @@ export async function createOrganization(app: FastifyInstance) {
               'Another organization with the same domain already exists.',
             )
           }
+        }
+
+        // 🔍 Buscar plano trial
+        const plan = await prisma.plan.findFirst({
+          where: { type: 'TRIAL' },
+          select: { id: true, isTrialAvailable: true },
+        })
+
+        if (!plan) {
+          throw new NotFoundError('Trial plan not found.')
         }
 
         const organization = await prisma.organization.create({
@@ -77,27 +77,17 @@ export async function createOrganization(app: FastifyInstance) {
           },
         })
 
-        // 🔥 Definir a data de trial, se aplicável
-        const trialEndsAt = plan.isTrialAvailable ? dayjs().add(7, 'day').toDate() : null
+        const trialEndsAt = plan.isTrialAvailable
+          ? dayjs().add(7, 'day').toDate()
+          : null
 
-        // 🔥 Definir o período atual da assinatura (30 dias para planos pagos)
-        const currentPeriodEnd = trialEndsAt ?? dayjs().add(30, 'day').toDate()
-        
-        const betaPlanId = await prisma.plan.findFirst({
-          where: {
-            type: 'TRIAL'
-          }
-        })
+        const currentPeriodEnd =
+          trialEndsAt ?? dayjs().add(30, 'day').toDate()
 
-        if(!betaPlanId){
-          throw new NotFoundError('Not faound plan')
-        }
-
-        // 🔥 Criar a assinatura (Subscription)
         const subscription = await prisma.subscription.create({
           data: {
             organizationId: organization.id,
-            planId: betaPlanId.id,
+            planId: plan.id,
             status: plan.isTrialAvailable ? 'TRIALING' : 'ACTIVE',
             currentPeriodEnd,
           },
