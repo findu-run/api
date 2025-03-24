@@ -2,11 +2,17 @@ import type { FastifyInstance } from 'fastify'
 import type { ZodTypeProvider } from 'fastify-type-provider-zod'
 import { z } from 'zod'
 import dayjs from 'dayjs'
+import utc from 'dayjs/plugin/utc'
+import timezone from 'dayjs/plugin/timezone'
 
 import { auth } from '@/http/middlewares/auth'
 import { prisma } from '@/lib/prisma'
 import { ensureIsAdminOrOwner } from '@/utils/permissions'
 import { NotFoundError } from '@/http/_errors/not-found-error'
+
+// Extende os plugins do dayjs
+dayjs.extend(utc)
+dayjs.extend(timezone)
 
 export async function getIpMetrics(app: FastifyInstance) {
   app
@@ -56,7 +62,12 @@ export async function getIpMetrics(app: FastifyInstance) {
 
         await ensureIsAdminOrOwner(userId, organization.id)
 
-        const startDate = dayjs().subtract(days, 'days').startOf('day').toDate()
+        const startDate = dayjs()
+          .tz('America/Sao_Paulo')
+          .subtract(days, 'days')
+          .startOf('day')
+          .toDate()
+
         const isHourly = days === 1
 
         const logs = await prisma.queryLog.findMany({
@@ -79,7 +90,9 @@ export async function getIpMetrics(app: FastifyInstance) {
         >()
 
         for (const log of logs) {
-          const date = dayjs(log.createdAt).format(timeFormat)
+          const date = dayjs(log.createdAt)
+            .tz('America/Sao_Paulo')
+            .format(timeFormat)
           const key = `${log.ipAddress}-${date}`
 
           if (!grouped.has(key)) {
