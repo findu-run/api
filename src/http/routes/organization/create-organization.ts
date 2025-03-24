@@ -39,6 +39,15 @@ export async function createOrganization(app: FastifyInstance) {
         const userId = await request.getCurrentUserId()
         const { name, domain, shouldAttachUsersByDomain } = request.body
 
+        const slug = createSlug(name)
+
+        const existing = await prisma.organization.findUnique({
+          where: { slug },
+        })
+        if (existing) {
+          throw new Error('Slug already in use')
+        }
+
         if (domain) {
           const organizationByDomain = await prisma.organization.findUnique({
             where: { domain },
@@ -64,7 +73,7 @@ export async function createOrganization(app: FastifyInstance) {
         const organization = await prisma.organization.create({
           data: {
             name,
-            slug: createSlug(name),
+            slug,
             domain,
             shouldAttachUsersByDomain,
             ownerId: userId,
@@ -81,8 +90,7 @@ export async function createOrganization(app: FastifyInstance) {
           ? dayjs().add(7, 'day').toDate()
           : null
 
-        const currentPeriodEnd =
-          trialEndsAt ?? dayjs().add(30, 'day').toDate()
+        const currentPeriodEnd = trialEndsAt ?? dayjs().add(30, 'day').toDate()
 
         const subscription = await prisma.subscription.create({
           data: {

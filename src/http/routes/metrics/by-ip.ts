@@ -17,13 +17,14 @@ export async function getIpMetrics(app: FastifyInstance) {
       {
         schema: {
           tags: ['Metrics'],
-          summary: 'Get request metrics grouped by IP and day',
+          summary: 'Get request metrics grouped by IP and time',
           security: [{ bearerAuth: [] }],
           params: z.object({
             slug: z.string(),
           }),
           querystring: z.object({
             days: z.coerce.number().min(1).max(90).default(30),
+            ip: z.string().optional(),
           }),
           response: {
             200: z.object({
@@ -33,7 +34,7 @@ export async function getIpMetrics(app: FastifyInstance) {
                   date: z.string(),
                   success: z.number(),
                   failed: z.number(),
-                })
+                }),
               ),
             }),
           },
@@ -41,7 +42,7 @@ export async function getIpMetrics(app: FastifyInstance) {
       },
       async (request) => {
         const { slug } = request.params
-        const { days } = request.query
+        const { days, ip } = request.query
 
         const userId = await request.getCurrentUserId()
 
@@ -56,11 +57,13 @@ export async function getIpMetrics(app: FastifyInstance) {
         await ensureIsAdminOrOwner(userId, organization.id)
 
         const startDate = dayjs().subtract(days, 'days').startOf('day').toDate()
+        const isHourly = days === 1
 
         const logs = await prisma.queryLog.findMany({
           where: {
             organizationId: organization.id,
             createdAt: { gte: startDate },
+            ...(ip ? { ipAddress: ip } : {}),
           },
           select: {
             ipAddress: true,
@@ -69,10 +72,14 @@ export async function getIpMetrics(app: FastifyInstance) {
           },
         })
 
-        const grouped = new Map<string, { ipAddress: string; date: string; success: number; failed: number }>()
+        const timeFormat = isHourly ? 'YYYY-MM-DD HH:00' : 'YYYY-MM-DD'
+        const grouped = new Map<
+          string,
+          { ipAddress: string; date: string; success: number; failed: number }
+        >()
 
         for (const log of logs) {
-          const date = dayjs(log.createdAt).format('YYYY-MM-DD')
+          const date = dayjs(log.createdAt).format(timeFormat)
           const key = `${log.ipAddress}-${date}`
 
           if (!grouped.has(key)) {
@@ -95,6 +102,6 @@ export async function getIpMetrics(app: FastifyInstance) {
         return {
           data: Array.from(grouped.values()),
         }
-      }
+      },
     )
 }

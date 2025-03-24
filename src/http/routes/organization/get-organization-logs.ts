@@ -26,8 +26,7 @@ export async function getOrganizationLogs(app: FastifyInstance) {
             perPage: z.coerce.number().min(1).max(100).default(20),
             searchTerm: z.string().optional(),
             status: z.enum(['SUCCESS', 'FAILED']).optional(), // ✅ Adicionado
-
-          }),          
+          }),
           response: {
             200: z.object({
               logs: z.array(
@@ -37,11 +36,10 @@ export async function getOrganizationLogs(app: FastifyInstance) {
                   queryType: z.string(), // 🔥 Agora identifica qual tipo de consulta foi feita
                   ipAddress: z.string(),
                   createdAt: z.coerce.date(),
-                })
+                }),
               ),
               totalRequests: z.number(),
               totalPages: z.number(), // ✅ aqui também
-
             }),
           },
         },
@@ -70,11 +68,11 @@ export async function getOrganizationLogs(app: FastifyInstance) {
               { status: { contains: searchTerm } },
             ],
           }),
-          ...(status && { status }), 
+          ...(status && { status }),
         }
-        
+
         const totalRequests = await prisma.queryLog.count({ where })
-        
+
         const logs = await prisma.queryLog.findMany({
           where,
           select: {
@@ -94,6 +92,6 @@ export async function getOrganizationLogs(app: FastifyInstance) {
           totalRequests,
           totalPages: Math.ceil(totalRequests / perPage),
         }
-      }
+      },
     )
 }
