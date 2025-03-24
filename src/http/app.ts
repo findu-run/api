@@ -43,6 +43,7 @@ import { getInvites } from './routes/invites/get-invites'
 import { getPendingInvites } from './routes/invites/get-pending-invites'
 import { rejectInvite } from './routes/invites/reject-invite'
 import { revokeInvite } from './routes/invites/revoke-invite'
+import { healthChecker } from './routes/health/health-checker'
 
 export const app = fastify().withTypeProvider<ZodTypeProvider>()
 
@@ -80,6 +81,7 @@ app.register(fastifySwaggerUi, {
 app.setSerializerCompiler(serializerCompiler)
 app.setValidatorCompiler(validatorCompiler)
 app.setErrorHandler(errorHandler)
+app.register(healthChecker)
 
 app.register(createAccount)
 app.register(authenticateWithPassword)
