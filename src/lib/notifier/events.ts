@@ -1,0 +1,10 @@
+export type NotificationEvent =
+  | 'payment.confirmed'
+  | 'purchase.created'
+  | 'subscription.expiring'
+  | 'usage.limit-reached'
+  | 'monitoring.down'
+  | 'monitoring.up'
+  | 'monitoring.unstable'
+  | 'custom.manual'
+  | 'user.bark-connected'

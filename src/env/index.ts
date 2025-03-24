@@ -15,6 +15,11 @@ const envSchemas = z.object({
   GITHUB_OAUTH_CLIENT_REDIRECT_URI: z.string(),
   AES_ENCRYPTION_KEY: z.string(),
   API_CONSULT: z.string(),
+  BARK_SERVER_URL: z.string(),
+  APPRISE_URL: z.string(),
+  NOTIFY_URL_BARK: z.string(),
+  NOTIFY_URL_NTFY: z.string(),
+  NOTIFY_URL_EMAIL: z.string(),
 })
 
 const _env = envSchemas.safeParse(process.env)

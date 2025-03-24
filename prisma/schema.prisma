@@ -14,6 +14,7 @@ model User {
   passwordHash String?   @map("password_hash")
   avatarUrl    String?   @map("avatar_url")
   birthday     DateTime?
+  barkKey      String?   @map("bark_key")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")

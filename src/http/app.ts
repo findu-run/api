@@ -44,6 +44,8 @@ import { getPendingInvites } from './routes/invites/get-pending-invites'
 import { rejectInvite } from './routes/invites/reject-invite'
 import { revokeInvite } from './routes/invites/revoke-invite'
 import { healthChecker } from './routes/health/health-checker'
+import { testNotification } from './routes/health/test-notification'
+import { updateUserBarkKey } from './routes/integrations/update-bark-key'
 
 export const app = fastify().withTypeProvider<ZodTypeProvider>()
 
@@ -82,6 +84,8 @@ app.setSerializerCompiler(serializerCompiler)
 app.setValidatorCompiler(validatorCompiler)
 app.setErrorHandler(errorHandler)
 app.register(healthChecker)
+app.register(testNotification)
+app.register(updateUserBarkKey)
 
 app.register(createAccount)
 app.register(authenticateWithPassword)
