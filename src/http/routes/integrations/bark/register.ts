@@ -18,7 +18,7 @@ export async function registerBark(app: FastifyInstance) {
           summary: 'Faz o registro do Bark',
           security: [{ bearerAuth: [] }],
           params: z.object({
-            deviceToken: z.string().min(10),
+            deviceToken: z.string().min(1),
           }),
           response: {
             201: z.object({
