@@ -10,7 +10,7 @@ export async function registerBark(app: FastifyInstance) {
   app
     .withTypeProvider<ZodTypeProvider>()
     .register(auth)
-    .get(
+    .post(
       '/integrations/bark/:deviceToken/register',
       {
         schema: {
