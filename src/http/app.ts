@@ -45,7 +45,8 @@ import { rejectInvite } from './routes/invites/reject-invite'
 import { revokeInvite } from './routes/invites/revoke-invite'
 import { healthChecker } from './routes/health/health-checker'
 import { testNotification } from './routes/health/test-notification'
-import { updateUserBarkKey } from './routes/integrations/update-bark-key'
+import { updateUserBarkKey } from './routes/integrations/bark/update-bark-key'
+import { connectBark } from './routes/integrations/bark/connect'
 
 export const app = fastify().withTypeProvider<ZodTypeProvider>()
 
@@ -86,6 +87,7 @@ app.setErrorHandler(errorHandler)
 app.register(healthChecker)
 app.register(testNotification)
 app.register(updateUserBarkKey)
+app.register(connectBark)
 
 app.register(createAccount)
 app.register(authenticateWithPassword)
