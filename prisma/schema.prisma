@@ -25,23 +25,13 @@ model User {
   member_on          Member[]
   owns_organizations Organization[]
   IpAddress          IpAddress[]
-  BarkSession        BarkSession[]
 
   @@map("users")
 }
 
-model BarkSession {
-  id        String   @id @default(uuid())
-  token     String   @unique
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId    String   @map("user_id")
-  createdAt DateTime @default(now()) @map("created_at")
-
-  @@map("bark_sessions")
-}
-
 enum TokenType {
   PASSWORD_RECOVER
+  BARK_CONNECT
 }
 
 model Token {
@@ -51,6 +41,11 @@ model Token {
 
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId String @map("user_id")
+
+  // 🔥 Dados específicos para integração com o Bark
+  deviceToken String? @map("device_token")
+  deviceKey   String? @map("device_key")
+  key         String? @map("bark_key") // pode ser um identificador da sessão/aplicação
 
   @@map("tokens")
 }

@@ -4,54 +4,57 @@ import { prisma } from '@/lib/prisma'
 import { sendNotification } from '@/lib/notifier/send'
 import type { ZodTypeProvider } from 'fastify-type-provider-zod'
 import { auth } from '@/http/middlewares/auth'
+import { NotFoundError } from '@/http/_errors/not-found-error'
 
 export async function connectBark(app: FastifyInstance) {
-  app.withTypeProvider<ZodTypeProvider>().post(
-    '/integrations/bark/connect',
-    {
-      schema: {
-        tags: ['Integrations'],
-        summary: 'Connect Bark to user via temporary session token',
-        security: [{ bearerAuth: [] }],
-        querystring: z.object({
-          session: z.string().uuid(),
-          key: z.string().min(5),
-          deviceToken: z.string().optional(), // só se quiser logar
-        }),
-        response: {
-          204: z.null(),
+  app
+    .withTypeProvider<ZodTypeProvider>()
+    .register(auth)
+    .get(
+      '/integrations/bark/connect',
+      {
+        schema: {
+          tags: ['Integrations'],
+          summary: 'Connect Bark to user',
+          security: [{ bearerAuth: [] }],
+          response: {
+            204: z.object({
+              message: z.string(),
+            }),
+          },
         },
       },
-    },
-    async (request, reply) => {
-      const { session, key } = request.query
+      async (request, reply) => {
+        const userId = await request.getCurrentUserId()
 
-      const sessionRecord = await prisma.barkSession.findUnique({
-        where: { token: session },
-        include: { user: true },
-      })
+        if (!userId) {
+          throw new NotFoundError('User not found')
+        }
 
-      if (!sessionRecord) {
-        throw new Error('Invalid session')
-      }
+        const token = await prisma.token.findFirst({
+          where: {
+            userId,
+            type: 'BARK_CONNECT',
+          },
+          orderBy: {
+            createdAt: 'desc',
+          },
+        })
 
-      await prisma.user.update({
-        where: { id: sessionRecord.userId },
-        data: { barkKey: key },
-      })
+        if (!token || !token.deviceKey) {
+          throw new NotFoundError('Device not connected to Bark')
+        }
 
-      await prisma.barkSession.delete({ where: { token: session } })
+        await sendNotification({
+          event: 'user.bark-connected',
+          title: '✅ Dispositivo conectado!',
+          message:
+            'Agora você receberá notificações da Findu direto no seu iPhone. 📲',
+          deviceKey: token.deviceKey,
+          skipApprise: true,
+        })
 
-      await sendNotification({
-        event: 'user.bark-connected',
-        title: '✅ Dispositivo conectado!',
-        message:
-          'Agora você receberá notificações da Findu direto no seu iPhone. 📲',
-        deviceKey: key,
-        skipApprise: true,
-      })
-
-      return reply.status(204).send()
-    },
-  )
+        return reply.status(204).send()
+      },
+    )
 }

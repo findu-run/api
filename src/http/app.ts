@@ -47,7 +47,7 @@ import { healthChecker } from './routes/health/health-checker'
 import { testNotification } from './routes/health/test-notification'
 import { updateUserBarkKey } from './routes/integrations/bark/update-bark-key'
 import { connectBark } from './routes/integrations/bark/connect'
-import { createBarkSession } from './routes/integrations/bark/session'
+
 import { registerBark } from './routes/integrations/bark/register'
 
 export const app = fastify().withTypeProvider<ZodTypeProvider>()
@@ -89,7 +89,6 @@ app.setErrorHandler(errorHandler)
 app.register(healthChecker)
 app.register(testNotification)
 app.register(updateUserBarkKey)
-app.register(createBarkSession)
 app.register(registerBark)
 app.register(connectBark)
 
