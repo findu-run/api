@@ -111,6 +111,7 @@ model Organization {
   addons       Addon[] // 🔥 Recursos extras comprados pela organização
   Invite       Invite[]
   QueryLog     QueryLog[]
+  Invoice      Invoice[]
 
   @@index([slug])
   @@map("organizations")
@@ -172,8 +173,30 @@ model Subscription {
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   plan         Plan         @relation(fields: [planId], references: [id])
+  Invoice      Invoice[]
 
   @@map("subscriptions")
+}
+
+model Invoice {
+  id             String        @id @default(uuid())
+  organizationId String
+  subscriptionId String
+  amount         Int // Valor total da fatura em centavos
+  status         InvoiceStatus
+  dueDate        DateTime // Data de vencimento
+  paidAt         DateTime? // Data de pagamento, se foi pago
+  createdAt      DateTime      @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  subscription Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+}
+
+enum InvoiceStatus {
+  PENDING
+  PAID
+  OVERDUE
+  CANCELED
 }
 
 model Plan {

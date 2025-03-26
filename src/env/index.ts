@@ -20,6 +20,8 @@ const envSchemas = z.object({
   NOTIFY_URL_BARK: z.string(),
   NOTIFY_URL_NTFY: z.string(),
   NOTIFY_URL_EMAIL: z.string(),
+  MANGOFY_SECRET_KEY: z.string(),
+  MANGOFY_STORE_CODE: z.string(),
 })
 
 const _env = envSchemas.safeParse(process.env)

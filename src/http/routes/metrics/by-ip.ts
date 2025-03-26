@@ -9,6 +9,7 @@ import { auth } from '@/http/middlewares/auth'
 import { prisma } from '@/lib/prisma'
 import { ensureIsAdminOrOwner } from '@/utils/permissions'
 import { NotFoundError } from '@/http/_errors/not-found-error'
+import { convertToBrazilTime } from '@/utils/convert-to-brazil-time'
 
 // Extende os plugins do dayjs
 dayjs.extend(utc)
@@ -62,8 +63,7 @@ export async function getIpMetrics(app: FastifyInstance) {
 
         await ensureIsAdminOrOwner(userId, organization.id)
 
-        const startDate = dayjs()
-          .tz('America/Sao_Paulo')
+        const startDate = convertToBrazilTime(new Date())
           .subtract(days, 'days')
           .startOf('day')
           .toDate()
@@ -90,9 +90,8 @@ export async function getIpMetrics(app: FastifyInstance) {
         >()
 
         for (const log of logs) {
-          const date = dayjs(log.createdAt)
-            .tz('America/Sao_Paulo')
-            .format(timeFormat)
+          const date = convertToBrazilTime(log.createdAt).format(timeFormat)
+
           const key = `${log.ipAddress}-${date}`
 
           if (!grouped.has(key)) {

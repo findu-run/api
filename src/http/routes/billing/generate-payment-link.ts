@@ -6,6 +6,9 @@ import { auth } from '@/http/middlewares/auth'
 import { prisma } from '@/lib/prisma'
 import { ensureIsAdminOrOwner } from '@/utils/permissions'
 import { NotFoundError } from '@/http/_errors/not-found-error'
+import { getGateway } from '@/lib/gateways/factory'
+import { env } from '@/env'
+import { getClientIp } from '@/utils/get-client-ip'
 
 export async function generatePaymentLink(app: FastifyInstance) {
   app
@@ -16,10 +19,14 @@ export async function generatePaymentLink(app: FastifyInstance) {
       {
         schema: {
           tags: ['Billing'],
-          summary: 'Generate payment link for an organization',
+          summary: 'Generate PIX payment link using Mangofy',
           security: [{ bearerAuth: [] }],
           params: z.object({
             slug: z.string(),
+          }),
+          body: z.object({
+            document: z.string(),
+            phoneNumber: z.string(),
           }),
           response: {
             200: z.object({
@@ -30,30 +37,54 @@ export async function generatePaymentLink(app: FastifyInstance) {
       },
       async (request, reply) => {
         const { slug } = request.params
+        const { document, phoneNumber } = request.body
         const userId = await request.getCurrentUserId()
+        const ip = getClientIp(request.headers, request.socket)
 
         const organization = await prisma.organization.findUnique({
           where: { slug },
           select: {
             id: true,
-            subscription: {
+            name: true,
+            owner: {
               select: {
-                planId: true,
+                name: true,
+                email: true,
               },
             },
           },
         })
 
-        if (!organization) {
-          throw new NotFoundError('Organization not found.')
-        }
+        if (!organization) throw new NotFoundError()
 
         await ensureIsAdminOrOwner(userId, organization.id)
 
-        // 🔥 Simulando um link de pagamento (seria gerado pelo gateway de pagamento)
-        const paymentUrl = `https://payment-gateway.com/pay?org=${organization.id}&plan=${organization.subscription?.planId}`
+        const invoice = await prisma.invoice.findFirst({
+          where: {
+            organizationId: organization.id,
+            status: 'PENDING',
+          },
+          orderBy: { dueDate: 'asc' },
+        })
 
-        return reply.send({ paymentUrl })
-      }
+        if (!invoice) throw new NotFoundError('No pending invoice found.')
+
+        const gateway = await getGateway()
+
+        const payment = await gateway.createPixPayment({
+          amount: invoice.amount,
+          invoiceId: invoice.id,
+          postbackUrl: `${env.HOST}/webhooks/payments?provider=mangofy`,
+          customer: {
+            name: organization.owner.name,
+            email: organization.owner.email,
+            document,
+            phone: phoneNumber,
+            ip,
+          },
+        })
+
+        return reply.send({ paymentUrl: payment.url || '' })
+      },
     )
 }
