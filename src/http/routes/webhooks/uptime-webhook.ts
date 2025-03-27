@@ -1,6 +1,5 @@
 import type { FastifyInstance } from 'fastify'
 import { z } from 'zod'
-
 import type { ZodTypeProvider } from 'fastify-type-provider-zod'
 import { sendNotification } from '@/lib/notifier/send'
 
@@ -10,10 +9,9 @@ export async function uptimeWebhook(app: FastifyInstance) {
     {
       schema: {
         tags: ['Webhooks'],
-        summary:
-          'Recebe alertas de instabilidade ou mensagens livres do monitoramento',
+        summary: 'Recebe alertas ou envia notificações manuais',
         body: z.object({
-          monitor: z.string().optional(),
+          monitor: z.string().nullable().optional(),
           status: z.enum(['up', 'down', 'warn']).optional(),
           event: z
             .enum([
@@ -38,7 +36,9 @@ export async function uptimeWebhook(app: FastifyInstance) {
           deviceKeys: z.array(z.string()).optional(),
         }),
         response: {
-          200: z.object({ ok: z.boolean() }),
+          200: z.object({
+            ok: z.boolean(),
+          }),
         },
       },
     },
@@ -67,9 +67,9 @@ export async function uptimeWebhook(app: FastifyInstance) {
 
       const result: any = await sendNotification({
         event: selectedEvent,
-        monitorName: monitor,
-        title: title,
-        message: message,
+        monitorName: monitor || undefined,
+        title,
+        message,
         icon,
         url,
         level,
