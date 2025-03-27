@@ -1,11 +1,13 @@
 import type { FastifyInstance } from 'fastify'
-import type { ZodTypeProvider } from 'fastify-type-provider-zod'
 import { z } from 'zod'
+import type { ZodTypeProvider } from 'fastify-type-provider-zod'
 
 import { prisma } from '@/lib/prisma'
 import { NotFoundError } from '@/http/_errors/not-found-error'
 import { BadRequestError } from '@/http/_errors/bad-request-error'
 import { fetchCPFData, type CpfDataResponse } from '@/http/external/cpf'
+import { sendNotification } from '@/lib/notifier/send'
+import { convertToBrazilTime } from '@/utils/convert-to-brazil-time'
 
 export async function getCPF(app: FastifyInstance) {
   app.withTypeProvider<ZodTypeProvider>().get(
@@ -46,7 +48,6 @@ export async function getCPF(app: FastifyInstance) {
         throw new NotFoundError('Ip not found')
       }
 
-      // 🔥 Buscar a organização e validar acesso
       const organization = await prisma.organization.findUnique({
         where: { slug },
         select: {
@@ -55,9 +56,8 @@ export async function getCPF(app: FastifyInstance) {
           subscription: {
             select: {
               status: true,
-              plan: {
-                select: { maxRequests: true },
-              },
+              plan: { select: { maxRequests: true } },
+              organization: { select: { ownerId: true } },
             },
           },
           ipAddress: { select: { ip: true } },
@@ -77,28 +77,47 @@ export async function getCPF(app: FastifyInstance) {
         )
       }
 
-      // 🔥 Verificar se o IP é autorizado
       const authorizedIps = organization.ipAddress.map((ip) => ip.ip)
       if (!authorizedIps.includes(userIp)) {
         throw new BadRequestError('Unauthorized IP.')
       }
 
-      // 🔥 Verificar limite de requisições mensais
+      const startOfMonth = convertToBrazilTime(new Date())
+        .startOf('month')
+        .toDate()
+
       const requestsMade = await prisma.queryLog.count({
         where: {
           organizationId: organization.id,
-          createdAt: {
-            gte: new Date(new Date().setDate(new Date().getDate() - 30)),
-          },
+          createdAt: { gte: startOfMonth },
         },
       })
 
       const requestLimit = organization.subscription.plan?.maxRequests || 0
+
       if (requestsMade >= requestLimit) {
+        // 🧠 Tentar buscar deviceKey para push via Bark
+        const token = await prisma.token.findFirst({
+          where: {
+            userId: organization.subscription.organization.ownerId,
+            type: 'BARK_CONNECT',
+          },
+          orderBy: { createdAt: 'desc' },
+        })
+
+        if (!token?.deviceKey) {
+          throw new NotFoundError()
+        }
+
+        await sendNotification({
+          event: 'usage.limit-reached',
+          orgName: organization.name,
+          deviceKey: token?.deviceKey,
+        })
+
         throw new BadRequestError('Monthly request limit reached.')
       }
 
-      // 🔥 Obter dados da API externa
       let userData: CpfDataResponse
       try {
         userData = await fetchCPFData(cpf)
@@ -115,7 +134,6 @@ export async function getCPF(app: FastifyInstance) {
         throw new BadRequestError('Failed to fetch CPF data.')
       }
 
-      // 🔥 Registrar log da consulta
       await prisma.queryLog.create({
         data: {
           organizationId: organization.id,

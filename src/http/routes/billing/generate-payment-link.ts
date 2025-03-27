@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify'
 import type { ZodTypeProvider } from 'fastify-type-provider-zod'
 import { z } from 'zod'
 
-import { auth } from '@/http/middlewares/auth'
+import { authWithBilling } from '@/http/middlewares/auth-with-billing'
 import { prisma } from '@/lib/prisma'
 import { ensureIsAdminOrOwner } from '@/utils/permissions'
 import { NotFoundError } from '@/http/_errors/not-found-error'
@@ -13,7 +13,7 @@ import { getClientIp } from '@/utils/get-client-ip'
 export async function generatePaymentLink(app: FastifyInstance) {
   app
     .withTypeProvider<ZodTypeProvider>()
-    .register(auth)
+    .register(authWithBilling)
     .post(
       '/organizations/:slug/billing/payment',
       {
@@ -55,7 +55,9 @@ export async function generatePaymentLink(app: FastifyInstance) {
           },
         })
 
-        if (!organization) throw new NotFoundError()
+        if (!organization) {
+          throw new NotFoundError('Organization not found.')
+        }
 
         await ensureIsAdminOrOwner(userId, organization.id)
 
@@ -67,7 +69,9 @@ export async function generatePaymentLink(app: FastifyInstance) {
           orderBy: { dueDate: 'asc' },
         })
 
-        if (!invoice) throw new NotFoundError('No pending invoice found.')
+        if (!invoice) {
+          throw new NotFoundError('No pending invoice found.')
+        }
 
         const gateway = await getGateway()
 

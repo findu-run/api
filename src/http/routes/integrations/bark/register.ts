@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify'
 import { z } from 'zod'
 import type { ZodTypeProvider } from 'fastify-type-provider-zod'
+
 import { prisma } from '@/lib/prisma'
 import { registerBarkKey } from '@/lib/oauth-bark'
 import { NotFoundError } from '@/http/_errors/not-found-error'
@@ -27,18 +28,28 @@ export async function registerBark(app: FastifyInstance) {
           },
         },
       },
-      async (request) => {
+      async (request, reply) => {
         const userId = await request.getCurrentUserId()
-
-        if (!userId) {
-          throw new NotFoundError('User not found')
-        }
+        if (!userId) throw new NotFoundError('User not found')
 
         const { deviceToken } = request.params
+
+        // Verifica se já existe um token igual (opcional)
+        await prisma.token.deleteMany({
+          where: {
+            userId,
+            type: 'BARK_CONNECT',
+            deviceToken,
+          },
+        })
 
         const { device_key, key, device_token } = await registerBarkKey({
           deviceToken,
         })
+
+        if (!device_key || !device_token) {
+          throw new NotFoundError('Falha ao registrar dispositivo no Bark.')
+        }
 
         await prisma.token.create({
           data: {
@@ -52,7 +63,9 @@ export async function registerBark(app: FastifyInstance) {
 
         const bark_server_uri = `bark://addServer?address=https://bark.findu.run/${device_key}`
 
-        return { bark_server_uri }
+        return reply.code(201).send({
+          bark_server_uri,
+        })
       },
     )
 }

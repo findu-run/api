@@ -41,20 +41,29 @@ export async function connectBark(app: FastifyInstance) {
           },
         })
 
-        if (!token || !token.deviceKey) {
+        if (!token?.deviceKey) {
           throw new NotFoundError('Device not connected to Bark')
+        }
+
+        const user = await prisma.user.findUnique({
+          where: { id: userId },
+          select: { name: true },
+        })
+
+        if (!user) {
+          throw new NotFoundError('User not found')
         }
 
         await sendNotification({
           event: 'user.bark-connected',
-          title: '✅ Dispositivo conectado!',
-          message:
-            'Agora você receberá notificações da Findu direto no seu iPhone. 📲',
+          orgName: user.name,
           deviceKey: token.deviceKey,
           skipApprise: true,
         })
 
-        return reply.status(204).send()
+        return reply
+          .status(204)
+          .send({ message: 'Device connected successfully' })
       },
     )
 }

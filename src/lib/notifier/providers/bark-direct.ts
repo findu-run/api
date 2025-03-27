@@ -3,6 +3,10 @@ import { env } from '@/env'
 type SendBarkDirectParams = {
   title: string
   body: string
+  icon?: string
+  url?: string
+  level?: 'active' | 'timeSensitive' | 'critical'
+  volume?: number
   device_key?: string
   device_keys?: string[]
 }
@@ -10,19 +14,32 @@ type SendBarkDirectParams = {
 export async function sendBarkDirect({
   title,
   body,
+  icon,
+  url,
+  level,
+  volume,
   device_key,
   device_keys,
 }: SendBarkDirectParams) {
-  const payload: any = {
+  const DEFAULT_BARK_ICON = ''
+  const queryParams = new URLSearchParams()
+
+  queryParams.append('icon', icon || DEFAULT_BARK_ICON)
+  if (url) queryParams.append('url', url)
+  if (level) queryParams.append('level', level)
+  if (volume !== undefined) queryParams.append('volume', volume.toString())
+
+  const endpoint = `${env.BARK_SERVER_URL}/push?${queryParams.toString()}`
+
+  const payload = {
     title,
     body,
+    ...(device_key ? { device_key } : {}),
+    ...(device_keys ? { device_keys } : {}),
   }
 
-  if (device_key) payload.device_key = device_key
-  if (device_keys) payload.device_keys = device_keys
-
   try {
-    const res = await fetch(`${env.BARK_SERVER_URL}/push`, {
+    const res = await fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),

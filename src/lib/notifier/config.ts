@@ -14,4 +14,5 @@ export const NOTIFICATION_CHANNELS: Record<
   'monitoring.up': ['ntfy'],
   'monitoring.unstable': ['ntfy'],
   'custom.manual': ['ntfy'],
+  'user.bark-connected': ['bark'],
 }

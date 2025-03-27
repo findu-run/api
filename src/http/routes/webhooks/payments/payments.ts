@@ -2,7 +2,6 @@ import type { FastifyInstance } from 'fastify'
 import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
 import type { ZodTypeProvider } from 'fastify-type-provider-zod'
-import { auth } from '@/http/middlewares/auth'
 
 export async function paymentWebhookRoute(app: FastifyInstance) {
   app.withTypeProvider<ZodTypeProvider>().post(

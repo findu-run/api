@@ -6,6 +6,7 @@ import { auth } from '@/http/middlewares/auth'
 import { prisma } from '@/lib/prisma'
 import { ensureIsAdminOrOwner } from '@/utils/permissions'
 import { NotFoundError } from '@/http/_errors/not-found-error'
+import { convertToBrazilTime } from '@/utils/convert-to-brazil-time'
 
 export async function getBillingDetails(app: FastifyInstance) {
   app
@@ -57,17 +58,26 @@ export async function getBillingDetails(app: FastifyInstance) {
 
         await ensureIsAdminOrOwner(userId, organization.id)
 
-        // Buscar quantos pagamentos já foram feitos
-        const totalPaidInvoices = await prisma.queryLog.count({
-          where: { organizationId: organization.id },
+        // 🔥 Buscar total de faturas pagas
+        const totalPaidInvoices = await prisma.invoice.count({
+          where: {
+            organizationId: organization.id,
+            status: 'PAID',
+          },
         })
+
+        const nextPaymentDate = organization.subscription?.currentPeriodEnd
+          ? convertToBrazilTime(
+              organization.subscription.currentPeriodEnd,
+            ).toISOString()
+          : null
 
         return reply.send({
           planName: organization.subscription?.plan.name || 'No Plan',
           status: organization.subscription?.status || 'INACTIVE',
-          nextPaymentDate: organization.subscription?.currentPeriodEnd?.toISOString() || null,
+          nextPaymentDate,
           totalPaidInvoices,
         })
-      }
+      },
     )
 }

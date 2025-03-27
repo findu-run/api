@@ -1,16 +1,23 @@
 import type { FastifyInstance } from 'fastify'
 import type { ZodTypeProvider } from 'fastify-type-provider-zod'
 import { z } from 'zod'
+import dayjs from 'dayjs'
+import timezone from 'dayjs/plugin/timezone'
+import utc from 'dayjs/plugin/utc'
 
-import { auth } from '@/http/middlewares/auth'
+import { authWithBilling } from '@/http/middlewares/auth-with-billing'
 import { prisma } from '@/lib/prisma'
 import { ensureIsAdminOrOwner } from '@/utils/permissions'
 import { NotFoundError } from '@/http/_errors/not-found-error'
+import { BadRequestError } from '@/http/_errors/bad-request-error'
+
+dayjs.extend(utc)
+dayjs.extend(timezone)
 
 export async function generateInvoiceRoute(app: FastifyInstance) {
   app
     .withTypeProvider<ZodTypeProvider>()
-    .register(auth)
+    .register(authWithBilling)
     .post(
       '/organizations/:slug/billing/invoices/generate',
       {
@@ -48,8 +55,24 @@ export async function generateInvoiceRoute(app: FastifyInstance) {
 
         await ensureIsAdminOrOwner(userId, org.id)
 
-        const today = new Date()
-        const dueDate = new Date(today.getFullYear(), today.getMonth() + 1, 1)
+        const dueDate = dayjs()
+          .tz('America/Sao_Paulo')
+          .add(1, 'month')
+          .startOf('month')
+          .toDate()
+
+        const existing = await prisma.invoice.findFirst({
+          where: {
+            organizationId: org.id,
+            dueDate,
+          },
+        })
+
+        if (existing) {
+          throw new BadRequestError(
+            'Invoice already generated for this period.',
+          )
+        }
 
         const invoice = await prisma.invoice.create({
           data: {

@@ -1,13 +1,14 @@
 import type { FastifyInstance } from 'fastify'
 import { CronJob, AsyncTask } from 'toad-scheduler'
 import { prisma } from '@/lib/prisma'
+import { convertToBrazilTime } from '@/utils/convert-to-brazil-time'
 
 export async function generateMonthlyInvoices(app: FastifyInstance) {
   const task = new AsyncTask(
     'generate-monthly-invoices',
     async () => {
-      const today = new Date()
-      const dueDate = new Date(today.getFullYear(), today.getMonth() + 1, 1)
+      const today = convertToBrazilTime(new Date())
+      const dueDate = today.add(1, 'month').startOf('month').toDate()
 
       const activeSubs = await prisma.subscription.findMany({
         where: { status: 'ACTIVE' },

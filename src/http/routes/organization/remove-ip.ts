@@ -32,7 +32,6 @@ export async function removeIpAddress(app: FastifyInstance) {
         const { slug, ipId } = request.params
         const userId = await request.getCurrentUserId()
 
-        // 🔥 Buscar a organização e garantir que o usuário seja OWNER
         const organization = await prisma.organization.findUnique({
           where: { slug },
           select: {
@@ -45,15 +44,13 @@ export async function removeIpAddress(app: FastifyInstance) {
               select: {
                 status: true,
                 plan: {
-                  select: {
-                    maxIps: true, // 🔥 Número máximo de IPs permitido pelo plano
-                  },
+                  select: { maxIps: true },
                 },
               },
             },
             addons: {
-              where: { type: 'EXTRA_IP' }, // 🔥 Obtém Addons de IP extra
-              select: { id: true, amount: true },
+              where: { type: 'EXTRA_IP' },
+              select: { amount: true },
             },
           },
         })
@@ -62,32 +59,38 @@ export async function removeIpAddress(app: FastifyInstance) {
           throw new NotFoundError('Organization not found.')
         }
 
-        // 🔥 Verifica se o usuário é o OWNER
         await ensureIsOwner(userId, organization.id)
 
-        // 🔥 Verifica se a organização tem um plano ativo
-        if (!organization.subscription || organization.subscription.status !== 'ACTIVE') {
-          throw new BadRequestError('Organization does not have an active subscription.')
+        if (
+          !organization.subscription ||
+          organization.subscription.status !== 'ACTIVE'
+        ) {
+          throw new BadRequestError(
+            'Organization does not have an active subscription.',
+          )
         }
 
-        // 🔥 Buscar o IP a ser removido
         const ipRecord = await prisma.ipAddress.findUnique({
           where: { id: ipId },
         })
 
         if (!ipRecord || ipRecord.organizationId !== organization.id) {
-          throw new NotFoundError('IP address not found or does not belong to this organization.')
+          throw new NotFoundError(
+            'IP address not found or does not belong to this organization.',
+          )
         }
 
-        // 🔥 Verifica se a organização ainda terá IPs suficientes após a remoção
         const totalRegisteredIps = organization.ipAddress.length
-        const maxAllowedIps = organization.subscription.plan.maxIps + (organization.addons[0]?.amount || 0)
+        const maxAllowedIps =
+          organization.subscription.plan.maxIps +
+          (organization.addons[0]?.amount || 0)
 
         if (totalRegisteredIps === 1 && maxAllowedIps === 1) {
-          throw new BadRequestError('This organization requires at least one registered IP.')
+          throw new BadRequestError(
+            'At least one IP address must remain registered.',
+          )
         }
 
-        // 🔥 Remove o IP no banco de dados
         await prisma.ipAddress.delete({
           where: { id: ipId },
         })

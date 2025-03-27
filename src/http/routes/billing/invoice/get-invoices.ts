@@ -1,16 +1,22 @@
 import type { FastifyInstance } from 'fastify'
 import type { ZodTypeProvider } from 'fastify-type-provider-zod'
 import { z } from 'zod'
+import dayjs from 'dayjs'
+import utc from 'dayjs/plugin/utc'
+import timezone from 'dayjs/plugin/timezone'
 
-import { auth } from '@/http/middlewares/auth'
+import { authWithBilling } from '@/http/middlewares/auth-with-billing'
 import { prisma } from '@/lib/prisma'
 import { ensureIsAdminOrOwner } from '@/utils/permissions'
 import { NotFoundError } from '@/http/_errors/not-found-error'
 
+dayjs.extend(utc)
+dayjs.extend(timezone)
+
 export async function getInvoices(app: FastifyInstance) {
   app
     .withTypeProvider<ZodTypeProvider>()
-    .register(auth)
+    .register(authWithBilling)
     .get(
       '/organizations/:slug/billing/invoices',
       {
@@ -59,8 +65,12 @@ export async function getInvoices(app: FastifyInstance) {
             id: invoice.id,
             amount: invoice.amount,
             status: invoice.status,
-            dueDate: invoice.dueDate.toISOString(),
-            paidAt: invoice.paidAt?.toISOString() || null,
+            dueDate: dayjs(invoice.dueDate)
+              .tz('America/Sao_Paulo')
+              .toISOString(),
+            paidAt: invoice.paidAt
+              ? dayjs(invoice.paidAt).tz('America/Sao_Paulo').toISOString()
+              : null,
           })),
         }
       },

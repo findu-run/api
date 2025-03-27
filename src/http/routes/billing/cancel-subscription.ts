@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify'
 import type { ZodTypeProvider } from 'fastify-type-provider-zod'
 import { z } from 'zod'
 
-import { auth } from '@/http/middlewares/auth'
+import { authWithBilling } from '@/http/middlewares/auth-with-billing'
 import { prisma } from '@/lib/prisma'
 import { ensureIsAdminOrOwner } from '@/utils/permissions'
 import { NotFoundError } from '@/http/_errors/not-found-error'
@@ -10,7 +10,7 @@ import { NotFoundError } from '@/http/_errors/not-found-error'
 export async function cancelSubscription(app: FastifyInstance) {
   app
     .withTypeProvider<ZodTypeProvider>()
-    .register(auth)
+    .register(authWithBilling)
     .post(
       '/organizations/:slug/billing/cancel',
       {
@@ -59,6 +59,6 @@ export async function cancelSubscription(app: FastifyInstance) {
         })
 
         return reply.send({ message: 'Subscription canceled successfully' })
-      }
+      },
     )
 }

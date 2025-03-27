@@ -4,6 +4,7 @@ import { auth } from '@/http/middlewares/auth'
 import { prisma } from '@/lib/prisma'
 import type { ZodTypeProvider } from 'fastify-type-provider-zod'
 import { sendNotification } from '@/lib/notifier/send'
+import { NotFoundError } from '@/http/_errors/not-found-error'
 
 export async function updateUserBarkKey(app: FastifyInstance) {
   app
@@ -28,6 +29,15 @@ export async function updateUserBarkKey(app: FastifyInstance) {
         const userId = await request.getCurrentUserId()
         const { barkKey } = request.body
 
+        const user = await prisma.user.findUnique({
+          where: { id: userId },
+          select: { name: true },
+        })
+
+        if (!user) {
+          throw new NotFoundError('User not found')
+        }
+
         await prisma.user.update({
           where: { id: userId },
           data: { barkKey },
@@ -37,14 +47,26 @@ export async function updateUserBarkKey(app: FastifyInstance) {
           data: { barkKey },
         })
 
+        const token = await prisma.token.findFirst({
+          where: {
+            userId,
+            type: 'BARK_CONNECT',
+          },
+          orderBy: {
+            createdAt: 'desc',
+          },
+        })
+
+        if (!token?.deviceKey) {
+          throw new NotFoundError('Device not connected to Bark')
+        }
+
         // 🔔 Envia notificação para o próprio usuário
         if (updated.barkKey) {
           await sendNotification({
             event: 'user.bark-connected',
-            title: '✅ Dispositivo conectado!',
-            message:
-              'Agora você receberá notificações direto no seu iPhone. 🔔',
-            deviceKey: updated.barkKey,
+            orgName: user.name,
+            deviceKey: token.deviceKey,
             skipApprise: true,
           })
         }
