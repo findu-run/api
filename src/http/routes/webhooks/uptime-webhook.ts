@@ -91,7 +91,7 @@ export async function uptimeWebhook(app: FastifyInstance) {
         await sendNotification({
           event,
           monitorName,
-          url,
+          url: 'https://app.findu.run/',
           orgName: user.name,
           deviceKey: user.barkKey,
           skipApprise: true,
