@@ -62,19 +62,19 @@ export async function uptimeWebhook(app: FastifyInstance) {
         },
       })
 
-      for (const user of users) {
-        await sendNotification({
-          event,
-          orgName: user.name,
-          // monitorName,
-          // message: msg,
-          url,
-          deviceKey: user.barkKey!,
-          level: heartbeat.status === 0 ? 'critical' : undefined,
-          volume: heartbeat.status === 0 ? 5 : undefined,
-          skipApprise: false,
-        })
-      }
+      // for (const user of users) {
+      //   await sendNotification({
+      //     event,
+      //     orgName: user.name,
+      //     // monitorName,
+      //     // message: msg,
+      //     url,
+      //     deviceKey: user.barkKey!,
+      //     level: heartbeat.status === 0 ? 'critical' : undefined,
+      //     volume: heartbeat.status === 0 ? 5 : undefined,
+      //     skipApprise: false,
+      //   })
+      // }
 
       return reply.send({ ok: true })
     },
