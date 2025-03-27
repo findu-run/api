@@ -29,9 +29,7 @@ export async function sendBarkDirect({
   if (level) queryParams.append('level', level)
   if (volume !== undefined) queryParams.append('volume', volume.toString())
 
-  const endpoint = `${env.BARK_SERVER_URL}/push?icon=https://i.ibb.co/jvRrvLg4/logo.jpg&${queryParams.toString()}`
-
-  console.log(endpoint)
+  const endpoint = `${env.BARK_SERVER_URL}/push?${queryParams.toString()}`
 
   const payload = {
     title,

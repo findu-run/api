@@ -235,6 +235,19 @@ model QueryLog {
   @@map("query_logs")
 }
 
+model MonitoringEvent {
+  id         String   @id @default(uuid())
+  name       String
+  status     Int
+  url        String?
+  message    String?
+  detectedAt DateTime @default(now())
+  notified   Boolean  @default(false)
+
+  @@index([name, status, detectedAt])
+  @@map("monitoring_events")
+}
+
 model Addon {
   id             String    @id @default(uuid())
   organizationId String

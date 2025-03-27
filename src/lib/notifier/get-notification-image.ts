@@ -5,28 +5,28 @@ export function getNotificationImageByEvent(
 ): string | undefined {
   switch (event) {
     case 'payment.confirmed':
-      return 'https://cdn.findu.run/img/payment-confirmed.png'
+      return 'https://i.ibb.co/jvRrvLg4/logo.jpg'
 
     case 'purchase.created':
-      return 'https://cdn.findu.run/img/purchase-created.png'
+      return 'https://i.ibb.co/jvRrvLg4/logo.jpg'
 
     case 'subscription.expiring':
-      return 'https://cdn.findu.run/img/subscription-expiring.png'
+      return 'https://i.ibb.co/jvRrvLg4/logo.jpg'
 
     case 'usage.limit-reached':
-      return 'https://cdn.findu.run/img/usage-limit.png'
+      return 'https://i.ibb.co/jvRrvLg4/logo.jpg'
 
     case 'monitoring.down':
-      return 'https://cdn.findu.run/img/server-down.png'
+      return 'https://i.ibb.co/jvRrvLg4/logo.jpg'
 
     case 'monitoring.up':
-      return 'https://cdn.findu.run/img/server-up.png'
+      return 'https://i.ibb.co/jvRrvLg4/logo.jpg'
 
     case 'monitoring.unstable':
-      return 'https://cdn.findu.run/img/server-unstable.png'
+      return 'https://i.ibb.co/jvRrvLg4/logo.jpg'
 
     case 'user.bark-connected':
-      return 'https://cdn.findu.run/img/bark-connected.png'
+      return 'https://i.ibb.co/jvRrvLg4/logo.jpg'
 
     default:
       return undefined

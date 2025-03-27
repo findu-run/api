@@ -1,9 +1,10 @@
 import { appriseProvider } from './providers/apprise'
-import { sendBarkDirect } from './providers/bark-direct'
+
+import { getFunnyNotificationMessage } from './get-funny-notification-message'
 
 import type { NotificationEvent } from './events'
-import { getFunnyNotificationMessage } from './get-funny-notification-message'
-import { getNotificationImageByEvent } from './get-notification-image'
+import { getBarkNotificationConfig } from './providers/bark/bark-utils'
+import { sendBarkDirect } from './providers/bark/bark-direct'
 
 type NotificationPayload = {
   event: NotificationEvent
@@ -46,13 +47,19 @@ export async function sendNotification({
       customMessage: message,
     })
 
-  const finalIcon = icon || getNotificationImageByEvent(event)
+  const barkConfig = getBarkNotificationConfig(event, deviceKey, generatedTitle)
+
+  const finalIcon = icon || barkConfig.icon
+  const finalLevel = level || barkConfig.level
+  const finalVolume = volume ?? barkConfig.volume
+  const finalUrl = url || barkConfig.url
 
   if (!skipApprise) {
     await appriseProvider.send({
       title: generatedTitle,
       message: generatedMessage,
       channels: ['bark'],
+      image: finalIcon,
     })
   }
 
@@ -61,9 +68,9 @@ export async function sendNotification({
       title: generatedTitle,
       body: generatedMessage,
       icon: finalIcon,
-      url,
-      level,
-      volume,
+      url: finalUrl,
+      level: finalLevel,
+      volume: finalVolume,
       device_key: deviceKey,
       device_keys: deviceKeys,
     })

@@ -1,5 +1,3 @@
-// src/lib/notifier/providers/apprise.ts
-
 import type { NotificationProvider, SendNotificationParams } from '../client'
 import { CHANNEL_URLS } from '../channel-urls'
 import { env } from '@/env'

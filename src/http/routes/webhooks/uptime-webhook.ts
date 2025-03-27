@@ -1,8 +1,9 @@
+import { prisma } from '@/lib/prisma'
+import { sendNotification } from '@/lib/notifier/send'
 import type { FastifyInstance } from 'fastify'
 import { z } from 'zod'
 import type { ZodTypeProvider } from 'fastify-type-provider-zod'
-import { sendNotification } from '@/lib/notifier/send'
-import { prisma } from '@/lib/prisma'
+import dayjs from 'dayjs'
 
 export async function uptimeWebhook(app: FastifyInstance) {
   app.withTypeProvider<ZodTypeProvider>().post(
@@ -27,9 +28,7 @@ export async function uptimeWebhook(app: FastifyInstance) {
           msg: z.string().optional(),
         }),
         response: {
-          200: z.object({
-            ok: z.boolean(),
-          }),
+          200: z.object({ ok: z.boolean() }),
         },
       },
     },
@@ -49,32 +48,54 @@ export async function uptimeWebhook(app: FastifyInstance) {
 
       const monitorName = monitor.name
       const url = monitor.url
+      const message = msg || heartbeat.msg || null
 
-      const users = await prisma.user.findMany({
+      // 🔁 Verificar duplicidade: evento semelhante nos últimos 10 minutos
+      const duplicate = await prisma.monitoringEvent.findFirst({
         where: {
-          barkKey: {
-            not: null,
+          name: monitorName,
+          status: heartbeat.status,
+          detectedAt: {
+            gte: dayjs().subtract(10, 'minutes').toDate(),
           },
-        },
-        select: {
-          name: true,
-          barkKey: true,
         },
       })
 
-      // for (const user of users) {
-      //   await sendNotification({
-      //     event,
-      //     orgName: user.name,
-      //     // monitorName,
-      //     // message: msg,
-      //     url,
-      //     deviceKey: user.barkKey!,
-      //     level: heartbeat.status === 0 ? 'critical' : undefined,
-      //     volume: heartbeat.status === 0 ? 5 : undefined,
-      //     skipApprise: false,
-      //   })
-      // }
+      if (duplicate) {
+        return reply.send({ ok: true }) // já notificado recentemente
+      }
+
+      // 🧾 Salvar o novo evento
+      await prisma.monitoringEvent.create({
+        data: {
+          name: monitorName,
+          status: heartbeat.status,
+          url,
+          message,
+        },
+      })
+
+      // 🔔 Buscar todos os usuários que têm o Bark conectado
+      const users = await prisma.user.findMany({
+        where: { barkKey: { not: null } },
+        select: { name: true, barkKey: true },
+      })
+
+      if (!users.length) {
+        return reply.send({ ok: true })
+      }
+
+      for (const user of users) {
+        if (!user.barkKey) continue
+
+        await sendNotification({
+          event,
+          monitorName,
+          url,
+          orgName: user.name,
+          deviceKey: user.barkKey,
+        })
+      }
 
       return reply.send({ ok: true })
     },

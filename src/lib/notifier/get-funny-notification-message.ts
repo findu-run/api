@@ -83,30 +83,33 @@ export function getFunnyNotificationMessage({
   const index = Math.floor(Math.random() * templates.length)
 
   return {
-    title: getTitlePrefix(event) + name,
+    title: getTitlePrefix(event),
     message: templates[index](name),
   }
 }
 
 function getTitlePrefix(event: NotificationEvent): string {
+  const appName = 'findu.run'
+  const prefix = `${appName} - `
+
   switch (event) {
     case 'monitoring.down':
-      return '🔥 Instabilidade detectada: '
+      return `${prefix}Instabilidade detectada `
     case 'monitoring.up':
-      return '🎉 Recuperado: '
+      return `${prefix}Recuperado `
     case 'usage.limit-reached':
-      return '🚫 Limite alcançado: '
+      return `${prefix}Limite alcançado `
     case 'subscription.expiring':
-      return '⏳ Assinatura expira em breve: '
+      return `${prefix}Assinatura expira em breve `
     case 'payment.confirmed':
-      return '💰 Pagamento recebido: '
+      return `${prefix}Pagamento recebido `
     case 'purchase.created':
-      return '🛒 Compra registrada: '
+      return `${prefix}Compra registrada `
     case 'user.bark-connected':
-      return '🔗 Bark conectado: '
+      return `${prefix}Conectado `
     case 'custom.manual':
-      return '📣 Notificação personalizada: '
+      return `${prefix}Notificação personalizada `
     default:
-      return '🔔 Alerta: '
+      return `${prefix}Alerta `
   }
 }
