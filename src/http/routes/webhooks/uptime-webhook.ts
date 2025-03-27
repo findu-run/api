@@ -10,40 +10,75 @@ export async function uptimeWebhook(app: FastifyInstance) {
     {
       schema: {
         tags: ['Webhooks'],
-        summary: 'Recebe alertas de instabilidade ou queda de serviço',
+        summary:
+          'Recebe alertas de instabilidade ou mensagens livres do monitoramento',
         body: z.object({
-          monitor: z.string(), // Nome do serviço monitorado
-          status: z.enum(['up', 'down', 'warn']),
-          message: z.string().optional(), // Mensagem enviada pelo monitor
-          url: z.string().optional(), // URL do serviço monitorado
+          monitor: z.string().optional(),
+          status: z.enum(['up', 'down', 'warn']).optional(),
+          event: z
+            .enum([
+              'payment.confirmed',
+              'purchase.created',
+              'subscription.expiring',
+              'usage.limit-reached',
+              'monitoring.down',
+              'monitoring.up',
+              'monitoring.unstable',
+              'custom.manual',
+              'user.bark-connected',
+            ])
+            .optional(),
+          title: z.string().optional(),
+          message: z.string().optional(),
+          url: z.string().optional(),
+          icon: z.string().optional(),
+          level: z.enum(['active', 'timeSensitive', 'critical']).optional(),
+          volume: z.number().min(0).max(10).optional(),
+          deviceKey: z.string().optional(),
+          deviceKeys: z.array(z.string()).optional(),
         }),
         response: {
-          200: z.object({
-            ok: z.boolean(),
-          }),
+          200: z.object({ ok: z.boolean() }),
         },
       },
     },
     async (request, reply) => {
-      const { monitor, status, message, url } = request.body
+      const {
+        monitor,
+        status,
+        event,
+        title,
+        message,
+        url,
+        icon,
+        level,
+        volume,
+        deviceKey,
+        deviceKeys,
+      } = request.body
 
-      const event =
-        status === 'down'
+      const selectedEvent =
+        event ||
+        (status === 'down'
           ? 'monitoring.down'
           : status === 'up'
             ? 'monitoring.up'
-            : 'monitoring.unstable'
+            : 'monitoring.unstable')
 
-      await sendNotification({
-        event,
+      const result: any = await sendNotification({
+        event: selectedEvent,
         monitorName: monitor,
-        message, // vai ser usada se definida
+        title: title,
+        message: message,
+        icon,
         url,
-        // você pode forçar o som alto apenas para eventos críticos
-        level: status === 'down' ? 'critical' : undefined,
-        volume: status === 'down' ? 5 : undefined,
-        skipApprise: false, // pode deixar true se quiser enviar só Bark
+        level,
+        volume,
+        deviceKey,
+        deviceKeys,
       })
+
+      console.log('[🔔 Notification Result]', result)
 
       return reply.send({ ok: true })
     },
