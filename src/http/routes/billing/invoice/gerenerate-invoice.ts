@@ -51,7 +51,9 @@ export async function generateInvoiceRoute(app: FastifyInstance) {
           },
         })
 
-        if (!org || !org.subscription) throw new NotFoundError()
+        if (!org || !org.subscription) {
+          throw new NotFoundError('Organization or subscription not found.')
+        }
 
         await ensureIsAdminOrOwner(userId, org.id)
 
@@ -74,11 +76,20 @@ export async function generateInvoiceRoute(app: FastifyInstance) {
           )
         }
 
+        // Calcula o custo total incluindo addons
+        const addons = await prisma.addon.findMany({
+          where: { organizationId: org.id },
+          select: { price: true },
+        })
+
+        const addonTotal = addons.reduce((sum, addon) => sum + addon.price, 0)
+        const totalAmount = org.subscription.plan.price + addonTotal
+
         const invoice = await prisma.invoice.create({
           data: {
             organizationId: org.id,
             subscriptionId: org.subscription.id,
-            amount: org.subscription.plan.price,
+            amount: totalAmount,
             status: 'PENDING',
             dueDate,
           },

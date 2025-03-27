@@ -8,3 +8,5 @@ export type NotificationEvent =
   | 'monitoring.unstable'
   | 'custom.manual'
   | 'user.bark-connected'
+  | 'addon.canceled'
+  | 'plan.changed'

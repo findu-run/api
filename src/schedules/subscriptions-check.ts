@@ -3,12 +3,12 @@ import { CronJob, AsyncTask } from 'toad-scheduler'
 import { checkSubscriptionStatus } from '@/services/subscription-service'
 
 export async function subscriptionsCheckSchedule(app: FastifyInstance) {
-  const cronExpression = '0 8 * * *' // Every Day at 8:00 AM
+  const cronExpression = '0 8 * * *'
   const task = new AsyncTask(
     'subscription-check-task',
     async () => {
       app.log.info('🔎 Iniciando verificação diária das assinaturas...')
-      await checkSubscriptionStatus()
+      await checkSubscriptionStatus(app)
       app.log.info('✅ Verificação diária concluída com sucesso!')
     },
     (err) => {
@@ -25,5 +25,6 @@ export async function subscriptionsCheckSchedule(app: FastifyInstance) {
     { preventOverrun: true },
   )
 
+  app.jobsMap.set('subscription-check-task', job)
   app.scheduler.addCronJob(job)
 }

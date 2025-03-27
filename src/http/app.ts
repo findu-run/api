@@ -52,6 +52,12 @@ import { fastifySchedule } from '@fastify/schedule'
 import { registerBark } from './routes/integrations/bark/register'
 import { testNotificationRoute } from './routes/notifications/test'
 import { uptimeWebhook } from './routes/webhooks/uptime-webhook'
+import { testTrialFlow } from './routes/health/testTrialFlow'
+import { generateMonthlyInvoices } from '@/schedules/generate-monthly-invoices'
+import { subscriptionsCheckSchedule } from '@/schedules/subscriptions-check'
+import { getJobsStatus } from './routes/health/getJobsStatus'
+import { ToadScheduler, type CronJob } from 'toad-scheduler'
+import { getInstabilityMetrics } from './routes/metrics/get-instability-metrics'
 
 export const app = fastify().withTypeProvider<ZodTypeProvider>()
 
@@ -89,10 +95,17 @@ app.register(fastifySwaggerUi, {
 app.setSerializerCompiler(serializerCompiler)
 app.setValidatorCompiler(validatorCompiler)
 app.setErrorHandler(errorHandler)
+
+app.jobsMap = new Map<string, CronJob>()
+
 app.register(fastifySchedule)
+app.register(getJobsStatus)
+app.register(generateMonthlyInvoices)
+app.register(subscriptionsCheckSchedule)
 
 app.register(healthChecker)
 app.register(testNotificationRoute)
+app.register(testTrialFlow)
 app.register(uptimeWebhook)
 
 app.register(updateUserBarkKey)
@@ -120,6 +133,7 @@ app.register(getCPF)
 
 app.register(getOrganizationMetrics)
 app.register(getIpMetrics)
+app.register(getInstabilityMetrics)
 
 app.register(cancelSubscription)
 app.register(generatePaymentLink)

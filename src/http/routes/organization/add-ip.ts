@@ -22,10 +22,9 @@ export async function addIpAddress(app: FastifyInstance) {
             slug: z.string(),
           }),
           body: z.object({
-            ip: z.string().regex(
-              /^(?:\d{1,3}\.){3}\d{1,3}$/,
-              'Invalid IPv4 format',
-            ),
+            ip: z
+              .string()
+              .regex(/^(?:\d{1,3}\.){3}\d{1,3}$/, 'Invalid IPv4 format'),
           }),
           response: {
             201: z.object({
@@ -40,7 +39,6 @@ export async function addIpAddress(app: FastifyInstance) {
         const { ip } = request.body
         const userId = await request.getCurrentUserId()
 
-        // 🔥 Buscar a organização e garantir que o usuário seja OWNER
         const organization = await prisma.organization.findUnique({
           where: { slug },
           select: {
@@ -54,13 +52,13 @@ export async function addIpAddress(app: FastifyInstance) {
                 status: true,
                 plan: {
                   select: {
-                    maxIps: true, // 🔥 Obtém o limite de IPs permitido pelo plano
+                    maxIps: true,
                   },
                 },
               },
             },
             addons: {
-              where: { type: 'EXTRA_IP' }, // 🔥 Obtém Addons de IP Extra
+              where: { type: 'EXTRA_IP' },
               select: { amount: true },
             },
           },
@@ -70,27 +68,29 @@ export async function addIpAddress(app: FastifyInstance) {
           throw new BadRequestError('Organization not found.')
         }
 
-        // 🔥 Verifica se o usuário é o OWNER
         await ensureIsOwner(userId, organization.id)
 
-        // 🔥 Verifica se a organização tem um plano ativo
-        if (!organization.subscription || organization.subscription.status !== 'ACTIVE') {
-          throw new BadRequestError('Organization does not have an active subscription.')
+        // 🔥 Aceita TRIALING e ACTIVE como status válidos
+        if (
+          !organization.subscription ||
+          !['ACTIVE', 'TRIALING'].includes(organization.subscription.status)
+        ) {
+          throw new BadRequestError(
+            'Organization does not have an active subscription.',
+          )
         }
 
-        // 🔥 Calcula o limite total de IPs permitidos
         const maxIpsAllowed =
           organization.subscription.plan.maxIps +
-          (organization.addons.reduce((sum, addon) => sum + addon.amount, 0) || 0)
+          (organization.addons.reduce((sum, addon) => sum + addon.amount, 0) ||
+            0)
 
-        // 🔥 Se já atingiu o limite de IPs, bloqueia a adição
         if (organization.ipAddress.length >= maxIpsAllowed) {
           throw new BadRequestError(
             `You have reached the maximum limit of ${maxIpsAllowed} IPs for your organization. Remove an existing IP or purchase an extra IP addon.`,
           )
         }
 
-        // 🔥 Adiciona o novo IP na organização
         const newIp = await prisma.ipAddress.create({
           data: {
             organizationId: organization.id,

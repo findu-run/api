@@ -7,3 +7,10 @@ declare module 'fastify' {
     checkBilling(organizationId: string): Promise<void>
   }
 }
+
+declare module 'fastify' {
+  interface FastifyInstance {
+    scheduler: ToadScheduler
+    jobsMap: Map<string, CronJob>
+  }
+}

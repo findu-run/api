@@ -11,11 +11,24 @@ export interface CreatePaymentParams {
     ip?: string
   }
   postbackUrl: string
+  items?: Array<{
+    code: string
+    name: string
+    amount: number
+    quantity: number
+  }>
+  card?: {
+    number: string
+    holder: string
+    expiry: string
+    cvv: string
+    installments: number
+  }
 }
 
 export interface CreatePaymentResponse {
   paymentId: string
-  url?: string // PIX QR Code ou redirecionamento
+  url?: string // PIX QR Code ou link de redirecionamento
 }
 
 export interface PaymentGateway {

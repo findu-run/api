@@ -24,8 +24,8 @@ export async function getBillingDetails(app: FastifyInstance) {
           }),
           response: {
             200: z.object({
-              planName: z.string(),
-              status: z.string(),
+              planName: z.string().nullable(),
+              status: z.string().nullable(),
               nextPaymentDate: z.string().nullable(),
               totalPaidInvoices: z.number(),
             }),
@@ -58,7 +58,7 @@ export async function getBillingDetails(app: FastifyInstance) {
 
         await ensureIsAdminOrOwner(userId, organization.id)
 
-        // 🔥 Buscar total de faturas pagas
+        // Busca total de faturas pagas
         const totalPaidInvoices = await prisma.invoice.count({
           where: {
             organizationId: organization.id,
@@ -66,15 +66,24 @@ export async function getBillingDetails(app: FastifyInstance) {
           },
         })
 
-        const nextPaymentDate = organization.subscription?.currentPeriodEnd
+        if (!organization.subscription) {
+          return reply.send({
+            planName: null,
+            status: null,
+            nextPaymentDate: null,
+            totalPaidInvoices,
+          })
+        }
+
+        const nextPaymentDate = organization.subscription.currentPeriodEnd
           ? convertToBrazilTime(
               organization.subscription.currentPeriodEnd,
             ).toISOString()
           : null
 
         return reply.send({
-          planName: organization.subscription?.plan.name || 'No Plan',
-          status: organization.subscription?.status || 'INACTIVE',
+          planName: organization.subscription.plan.name,
+          status: organization.subscription.status,
           nextPaymentDate,
           totalPaidInvoices,
         })

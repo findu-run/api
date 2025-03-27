@@ -15,7 +15,7 @@ export async function uptimeWebhook(app: FastifyInstance) {
         body: z.object({
           heartbeat: z
             .object({
-              status: z.number().int().min(0).max(2), // 0 = down, 1 = up, 2 = warn
+              status: z.number().int().min(0).max(2),
               msg: z.string().optional(),
             })
             .nullable(),
@@ -50,7 +50,7 @@ export async function uptimeWebhook(app: FastifyInstance) {
       const url = monitor.url
       const message = msg || heartbeat.msg || null
 
-      // 🔁 Verificar duplicidade: evento semelhante nos últimos 10 minutos
+      // Evita duplicidade nos últimos 10 minutos
       const duplicate = await prisma.monitoringEvent.findFirst({
         where: {
           name: monitorName,
@@ -62,10 +62,9 @@ export async function uptimeWebhook(app: FastifyInstance) {
       })
 
       if (duplicate) {
-        return reply.send({ ok: true }) // já notificado recentemente
+        return reply.send({ ok: true })
       }
 
-      // 🧾 Salvar o novo evento
       await prisma.monitoringEvent.create({
         data: {
           name: monitorName,
@@ -75,40 +74,28 @@ export async function uptimeWebhook(app: FastifyInstance) {
         },
       })
 
-      // 🔔 Buscar todos os usuários com chave de bark
-      const users = await prisma.user.findMany({
-        where: { barkKey: { not: null } },
-        select: { id: true, name: true },
+      // Busca todos os tokens ativos com deviceKey
+      const tokens = await prisma.token.findMany({
+        where: {
+          type: 'BARK_CONNECT',
+          deviceKey: { not: null },
+        },
+        select: {
+          deviceKey: true,
+          user: {
+            select: {
+              name: true,
+            },
+          },
+        },
       })
 
-      if (!users.length) {
-        return reply.send({ ok: true })
-      }
-
-      for (const user of users) {
-        const token = await prisma.token.findFirst({
-          where: {
-            userId: user.id,
-            type: 'BARK_CONNECT',
-          },
-          orderBy: {
-            createdAt: 'desc',
-          },
-        })
-
-        if (!token?.deviceKey) {
-          console.warn(
-            `[BARK] Dispositivo não conectado para o usuário ${user.name}`,
-          )
-          continue
-        }
-
+      for (const token of tokens) {
         await sendNotification({
           event,
-          monitorName,
           url: 'https://app.findu.run/',
-          orgName: user.name,
-          deviceKey: token.deviceKey,
+          orgName: token.user.name,
+          deviceKey: token.deviceKey!,
           skipApprise: true,
         })
       }

@@ -1,6 +1,7 @@
 import { env } from '@/env'
-import { MangofyGateway } from './mongofy'
+
 import type { PaymentGateway } from './types'
+import { MangofyGateway } from './mongofy'
 
 export async function getGateway(): Promise<PaymentGateway> {
   return new MangofyGateway({

@@ -8,59 +8,106 @@ type EventParams = {
   customMessage?: string
 }
 
+const APP_NICKNAME = 'Finducao'
+
 const funnyMessages: Record<NotificationEvent, ((name: string) => string)[]> = {
   'payment.confirmed': [
     (name) =>
-      `💸 ${name}, pagamento recebido! Agora você é oficialmente chique.`,
-    (name) => `✅ O dindin caiu na conta, ${name}. Tá liberado o acesso!`,
-    (name) => `🎉 Grana confirmada, ${name}. Bora usar sem medo!`,
+      `💸 Beleza, ${name}! O pagamento caiu, agora você é VIP até o próximo boleto!`,
+    (name) =>
+      `✅ Dinheiro na conta, ${name}! Pode gastar sem dó, a gente libera!`,
+    (name) => `🎉 Pagou direitinho, ${name}? Tá liberado pra zuar no sistema!`,
   ],
 
   'purchase.created': [
-    (name) => `🛍️ Nova compra registrada por ${name}. Gastar é preciso!`,
     (name) =>
-      `🧾 ${name} fez uma nova aquisição. Cheirinho de coisa nova no ar.`,
+      `🛍️ ${name}, comprou mais um brinquedinho, hein? Não vai falir esse mês, né?`,
+    (name) =>
+      `🧾 Eita, ${name}! Gastando igual gente grande, já mandamos a fatura pra te sacanear!`,
+    (name) =>
+      `💰 Compra nova na área, ${name}! Espero que tenha grana pra pagar essa zoeira!`,
   ],
 
   'subscription.expiring': [
-    (name) => `⏳ Ei ${name}, sua assinatura tá quase vencendo! Bora renovar?`,
     (name) =>
-      `🚨 Última chamada, ${name}! Sua assinatura vai expirar. Tá preparado?`,
+      `⏳ Ô ${name}, sua assinatura tá com os dias contados! Vai renovar ou vai ficar na mão?`,
+    (name) =>
+      `🚨 Última chance, ${name}! Sua assinatura tá quase virando história, bota a mão no bolso!`,
+    (name) =>
+      `⏰ Tic-tac, ${name}! Sua assinatura tá quase dando tchau, corre aí, vagabundo!`,
   ],
 
   'usage.limit-reached': [
-    (name) => `📉 ${name}, você usou tudo! As requisições acabaram. 😬`,
-    (name) => `🚫 Créditos esgotados, ${name}. Que tal um upgrade agora?`,
+    (name) =>
+      `📉 ${name}, acabou a farra! Gastou tudo, agora chora ou paga mais, hein?`,
+    (name) =>
+      `🚫 Limite estourado, ${name}! Tá pensando que é ilimitado, otário? Compra mais!`,
+    (name) =>
+      `💥 ${name}, suas requisições foram pro saco! Quer mais? Então desembolsa!`,
   ],
 
   'monitoring.down': [
     (name) =>
-      `🚨 Atenção, ${name}! Nosso serviço tá fora do ar. Já estamos resolvendo!`,
+      `🚨 ${name}, caiu tudo aqui! Tá feia a coisa, mas já tô resolvendo, calma aí!`,
     (name) =>
-      `💥 ${name}, parece que nosso sistema deu uma pausa. Calma que já voltamos!`,
+      `💥 Ops, ${name}! O sistema deu uma cochilada, mas a gente tá chutando ele pra acordar!`,
+    (name) =>
+      `⚠️ ${name}, nosso servidor tá de palhaçada, mas a gente resolve rapidão!`,
   ],
 
   'monitoring.up': [
-    (name) => `✅ Voltamos, ${name}! Tudo certo por aqui de novo. 👨‍🔧`,
-    (name) => `🎉 API de pé novamente, ${name}! Pode respirar aliviado.`,
+    (name) =>
+      `✅ ${name}, levantei o sistema na marra! Pode voltar a usar, seu ingrato!`,
+    (name) =>
+      `🎉 Tudo de pé de novo, ${name}! A gente é foda, agradece aí, vai!`,
+    (name) =>
+      `👨‍🔧 ${name}, consertei a bagunça! Tá smooth como bunda de bebê!`,
   ],
 
   'monitoring.unstable': [
     (name) =>
-      `⚠️ ${name}, detectamos instabilidade. Estamos monitorando de perto!`,
+      `⚠️ ${name}, tá oscilando mais que opinião de político! Tô de olho, relaxa!`,
     (name) =>
-      `🤔 ${name}, algo estranho rolando na nossa API. Estamos de olho.`,
+      `🤔 ${name}, o sistema tá fazendo dancinha estranha, mas a gente não deixa cair!`,
+    (name) =>
+      `🚨 ${name}, instabilidade detectada! Tá feio, mas eu seguro essa bronca!`,
   ],
 
   'user.bark-connected': [
-    (name) => `📲 Boa, ${name}! Seu dispositivo tá pronto pra receber alertas.`,
     (name) =>
-      `🔔 Conexão feita com sucesso, ${name}. Agora você vai estar por dentro de tudo.`,
+      `📲 ${name}, conectou o Bark direitinho! Agora te perturbo sempre, sacou?`,
+    (name) =>
+      `🔔 Beleza, ${name}! Tá plugado na gente, prepare-se pra levar uns sustos!`,
+    (name) =>
+      `✅ ${name}, conexão feita! Agora eu te acho até no fim do mundo!`,
   ],
 
   'custom.manual': [
-    (name) => `👀 ${name}, chegou uma notificação personalizada pra você.`,
-    (name) => `💬 O administrador mandou um recado, ${name}. Confere aí.`,
+    (name) =>
+      `👀 ${name}, mandaram um recado personalizado pra você! Lê aí, seu curioso!`,
+    (name) =>
+      `💬 Ei ${name}, o chefão te mandou um bilhete! Vai encarar ou vai correr?`,
+    (name) =>
+      `📩 ${name}, alguém te cutucou com uma mensagem! Confere antes que eu delete!`,
+  ],
+
+  // Novos eventos
+  'addon.canceled': [
+    (name) =>
+      `🗑️ ${name}, jogou o addon fora, hein? Tá economizando ou só cansado da zoeira?`,
+    (name) =>
+      `🚫 Eita, ${name}! Cancelou o addon, agora vai ficar só no basicão, seu pão-duro!`,
+    (name) =>
+      `💥 ${name}, addon deletado na cara dura! A gente avisa pra não chorar depois!`,
+  ],
+
+  'plan.changed': [
+    (name) =>
+      `📈 ${name}, trocou de plano, hein? Será que agora aguenta o tranco?`,
+    (name) =>
+      `🔄 Plano novo na área, ${name}! A gente te botou pra rodar em outro nível!`,
+    (name) =>
+      `💪 ${name}, mudou o plano como quem muda de cueca! Tá chique agora, hein?`,
   ],
 }
 
@@ -73,13 +120,13 @@ export function getFunnyNotificationMessage({
 }: EventParams) {
   if (customTitle || customMessage) {
     return {
-      title: customTitle ?? '🔔 Notificação',
-      message: customMessage ?? '',
+      title: customTitle ?? '🔔 Notificação do Findão',
+      message: customMessage ?? 'Sem mensagem? Que preguiça, hein!',
     }
   }
 
   const templates = funnyMessages[event]
-  const name = monitorName || orgName || 'usuário'
+  const name = monitorName || orgName || 'camarada'
   const index = Math.floor(Math.random() * templates.length)
 
   return {
@@ -94,22 +141,26 @@ function getTitlePrefix(event: NotificationEvent): string {
 
   switch (event) {
     case 'monitoring.down':
-      return `${prefix}Instabilidade detectada `
+      return `${prefix}Tá caindo tudo! `
     case 'monitoring.up':
-      return `${prefix}Recuperado `
+      return `${prefix}De volta ao jogo `
     case 'usage.limit-reached':
-      return `${prefix}Limite alcançado `
+      return `${prefix}Sem mais créditos `
     case 'subscription.expiring':
-      return `${prefix}Assinatura expira em breve `
+      return `${prefix}Assinatura na corda bamba `
     case 'payment.confirmed':
-      return `${prefix}Pagamento recebido `
+      return `${prefix}Grana na mão `
     case 'purchase.created':
-      return `${prefix}Compra registrada `
+      return `${prefix}Compra na lata `
     case 'user.bark-connected':
-      return `${prefix}Conectado `
+      return `${prefix}Conectado na zoeira `
     case 'custom.manual':
-      return `${prefix}Notificação personalizada `
+      return `${prefix}Recadinho esperto `
+    case 'addon.canceled':
+      return `${prefix}Addon pro saco `
+    case 'plan.changed':
+      return `${prefix}Plano trocado `
     default:
-      return `${prefix}Alerta `
+      return `${prefix}Alerta sacana `
   }
 }

@@ -57,6 +57,7 @@ export async function connectBark(app: FastifyInstance) {
         await sendNotification({
           event: 'user.bark-connected',
           orgName: user.name,
+          url: 'https://app.findu.run/',
           deviceKey: token.deviceKey,
           skipApprise: true,
         })

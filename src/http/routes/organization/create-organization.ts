@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify'
 import type { ZodTypeProvider } from 'fastify-type-provider-zod'
 import { z } from 'zod'
-import dayjs from 'dayjs'
+import { convertToBrazilTime } from '@/utils/convert-to-brazil-time'
 
 import { prisma } from '@/lib/prisma'
 import { createSlug } from '@/utils/create-slug'
@@ -45,14 +45,13 @@ export async function createOrganization(app: FastifyInstance) {
           where: { slug },
         })
         if (existing) {
-          throw new Error('Slug already in use')
+          throw new BadRequestError('Slug already in use')
         }
 
         if (domain) {
           const organizationByDomain = await prisma.organization.findUnique({
             where: { domain },
           })
-
           if (organizationByDomain) {
             throw new BadRequestError(
               'Another organization with the same domain already exists.',
@@ -60,7 +59,7 @@ export async function createOrganization(app: FastifyInstance) {
           }
         }
 
-        // 🔍 Buscar plano trial
+        // Busca o plano TRIAL
         const plan = await prisma.plan.findFirst({
           where: { type: 'TRIAL' },
           select: { id: true, isTrialAvailable: true },
@@ -68,6 +67,24 @@ export async function createOrganization(app: FastifyInstance) {
 
         if (!plan) {
           throw new NotFoundError('Trial plan not found.')
+        }
+
+        // Verifica se o usuário já usou um trial como dono
+        const userTrialHistory = await prisma.subscription.findFirst({
+          where: {
+            organization: {
+              ownerId: userId, // Só olha orgs onde o usuário é dono
+            },
+            plan: {
+              type: 'TRIAL', // Associações com plano TRIAL
+            },
+          },
+        })
+
+        if (userTrialHistory) {
+          throw new BadRequestError(
+            'You have already used a trial period. Please choose a paid plan to create a new organization.',
+          )
         }
 
         const organization = await prisma.organization.create({
@@ -86,11 +103,11 @@ export async function createOrganization(app: FastifyInstance) {
           },
         })
 
+        const now = convertToBrazilTime(new Date())
         const trialEndsAt = plan.isTrialAvailable
-          ? dayjs().add(7, 'day').toDate()
+          ? now.add(7, 'day').toDate()
           : null
-
-        const currentPeriodEnd = trialEndsAt ?? dayjs().add(30, 'day').toDate()
+        const currentPeriodEnd = trialEndsAt ?? now.add(30, 'day').toDate()
 
         const subscription = await prisma.subscription.create({
           data: {

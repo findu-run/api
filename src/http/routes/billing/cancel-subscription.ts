@@ -6,6 +6,7 @@ import { authWithBilling } from '@/http/middlewares/auth-with-billing'
 import { prisma } from '@/lib/prisma'
 import { ensureIsAdminOrOwner } from '@/utils/permissions'
 import { NotFoundError } from '@/http/_errors/not-found-error'
+import { BadRequestError } from '@/http/_errors/bad-request-error'
 
 export async function cancelSubscription(app: FastifyInstance) {
   app
@@ -52,7 +53,21 @@ export async function cancelSubscription(app: FastifyInstance) {
           throw new NotFoundError('No active subscription found.')
         }
 
-        // 🔥 Cancelar a assinatura no banco
+        // Verifica se há faturas pendentes
+        const pendingInvoices = await prisma.invoice.count({
+          where: {
+            organizationId: organization.id,
+            status: 'PENDING',
+          },
+        })
+
+        if (pendingInvoices > 0) {
+          throw new BadRequestError(
+            'Cannot cancel subscription with pending invoices.',
+          )
+        }
+
+        // Cancela a assinatura no banco
         await prisma.subscription.update({
           where: { id: organization.subscription.id },
           data: { status: 'CANCELED' },

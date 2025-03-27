@@ -181,15 +181,18 @@ model Subscription {
 model Invoice {
   id             String        @id @default(uuid())
   organizationId String
-  subscriptionId String
+  subscriptionId String? // Tornando opcional
   amount         Int // Valor total da fatura em centavos
   status         InvoiceStatus
   dueDate        DateTime // Data de vencimento
   paidAt         DateTime? // Data de pagamento, se foi pago
-  createdAt      DateTime      @default(now()) @map("created_at")
+  paymentUrl     String?       @map("payment_url")
+  paymentId      String?
 
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  subscription Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  subscription Subscription? @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
 }
 
 enum InvoiceStatus {
@@ -204,7 +207,7 @@ model Plan {
   name             String
   price            Int // Em centavos (ex: R$ 10,00 => 1000)
   description      String?
-  type             PlanTier // 🔥 Enum que define o tipo da assinatura
+  type             PlanTier @unique
   isTrialAvailable Boolean  @default(false) // 🔥 Define se o plano tem trial
 
   maxOrganizations Int // Quantidade máxima de organizações no plano

@@ -23,28 +23,30 @@ export async function getOrganizationBilling(app: FastifyInstance) {
           }),
           response: {
             200: z.object({
-              billing: z.object({
-                plan: z.object({
-                  type: z.string(),
-                  price: z.number(),
-                }),
-                extraIps: z.object({
-                  amount: z.number(),
-                  unit: z.number(),
-                  price: z.number(),
-                }),
-                extraRequests: z.object({
-                  amount: z.number(),
-                  unit: z.number(),
-                  price: z.number(),
-                }),
-                earlyIpChanges: z.object({
-                  amount: z.number(),
-                  unit: z.number(),
-                  price: z.number(),
-                }),
-                total: z.number(),
-              }),
+              billing: z
+                .object({
+                  plan: z.object({
+                    type: z.string(),
+                    price: z.number(),
+                  }),
+                  extraIps: z.object({
+                    amount: z.number(),
+                    unit: z.number(),
+                    price: z.number(),
+                  }),
+                  extraRequests: z.object({
+                    amount: z.number(),
+                    unit: z.number(),
+                    price: z.number(),
+                  }),
+                  earlyIpChanges: z.object({
+                    amount: z.number(),
+                    unit: z.number(),
+                    price: z.number(),
+                  }),
+                  total: z.number(),
+                })
+                .nullable(),
             }),
           },
         },
@@ -76,38 +78,38 @@ export async function getOrganizationBilling(app: FastifyInstance) {
         })
 
         if (!subscription) {
-          throw new Error('Organization does not have an active subscription.')
+          return {
+            billing: null,
+          }
         }
 
         const [extraIps, extraRequests, earlyIpChanges] = await Promise.all([
           prisma.addon.findFirst({
             where: { organizationId: organization.id, type: 'EXTRA_IP' },
-            select: { amount: true },
+            select: { amount: true, price: true },
           }),
           prisma.addon.findFirst({
             where: { organizationId: organization.id, type: 'EXTRA_REQUESTS' },
-            select: { amount: true },
+            select: { amount: true, price: true },
           }),
           prisma.addon.findFirst({
             where: { organizationId: organization.id, type: 'EARLY_IP_CHANGE' },
-            select: { amount: true },
+            select: { amount: true, price: true },
           }),
         ])
-
-        const PRICES = {
-          EXTRA_IP: 10,
-          EXTRA_REQUESTS: 0.002,
-          EARLY_IP_CHANGE: 5,
-        }
 
         const extraIpsAmount = extraIps?.amount || 0
         const extraRequestsAmount = extraRequests?.amount || 0
         const earlyIpChangesAmount = earlyIpChanges?.amount || 0
 
-        const extraIpsPrice = extraIpsAmount * PRICES.EXTRA_IP
-        const extraRequestsPrice = extraRequestsAmount * PRICES.EXTRA_REQUESTS
+        const extraIpsUnitPrice = extraIps?.price || 0
+        const extraRequestsUnitPrice = extraRequests?.price || 0
+        const earlyIpChangesUnitPrice = earlyIpChanges?.price || 0
+
+        const extraIpsPrice = extraIpsAmount * extraIpsUnitPrice
+        const extraRequestsPrice = extraRequestsAmount * extraRequestsUnitPrice
         const earlyIpChangesPrice =
-          earlyIpChangesAmount * PRICES.EARLY_IP_CHANGE
+          earlyIpChangesAmount * earlyIpChangesUnitPrice
 
         const total =
           subscription.plan.price +
@@ -123,17 +125,17 @@ export async function getOrganizationBilling(app: FastifyInstance) {
             },
             extraIps: {
               amount: extraIpsAmount,
-              unit: PRICES.EXTRA_IP,
+              unit: extraIpsUnitPrice,
               price: extraIpsPrice,
             },
             extraRequests: {
               amount: extraRequestsAmount,
-              unit: PRICES.EXTRA_REQUESTS,
+              unit: extraRequestsUnitPrice,
               price: extraRequestsPrice,
             },
             earlyIpChanges: {
               amount: earlyIpChangesAmount,
-              unit: PRICES.EARLY_IP_CHANGE,
+              unit: earlyIpChangesUnitPrice,
               price: earlyIpChangesPrice,
             },
             total,
