@@ -31,6 +31,8 @@ export async function sendBarkDirect({
 
   const endpoint = `${env.BARK_SERVER_URL}/push?icon=https://i.ibb.co/jvRrvLg4/logo.jpg&${queryParams.toString()}`
 
+  console.log(endpoint)
+
   const payload = {
     title,
     body,
