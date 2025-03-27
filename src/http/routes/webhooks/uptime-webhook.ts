@@ -94,6 +94,7 @@ export async function uptimeWebhook(app: FastifyInstance) {
           url,
           orgName: user.name,
           deviceKey: user.barkKey,
+          skipApprise: true,
         })
       }
 
