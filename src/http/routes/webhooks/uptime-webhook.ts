@@ -36,7 +36,7 @@ export async function uptimeWebhook(app: FastifyInstance) {
       const { heartbeat, monitor, msg } = request.body
 
       if (!heartbeat || !monitor) {
-        return reply.status(200).send({ ok: true }) // ignora testes
+        return reply.status(200).send({ ok: true })
       }
 
       const event =
@@ -75,10 +75,10 @@ export async function uptimeWebhook(app: FastifyInstance) {
         },
       })
 
-      // 🔔 Buscar todos os usuários que têm o Bark conectado
+      // 🔔 Buscar todos os usuários com chave de bark
       const users = await prisma.user.findMany({
         where: { barkKey: { not: null } },
-        select: { name: true, barkKey: true },
+        select: { id: true, name: true },
       })
 
       if (!users.length) {
@@ -86,14 +86,29 @@ export async function uptimeWebhook(app: FastifyInstance) {
       }
 
       for (const user of users) {
-        if (!user.barkKey) continue
+        const token = await prisma.token.findFirst({
+          where: {
+            userId: user.id,
+            type: 'BARK_CONNECT',
+          },
+          orderBy: {
+            createdAt: 'desc',
+          },
+        })
+
+        if (!token?.deviceKey) {
+          console.warn(
+            `[BARK] Dispositivo não conectado para o usuário ${user.name}`,
+          )
+          continue
+        }
 
         await sendNotification({
           event,
           monitorName,
           url: 'https://app.findu.run/',
           orgName: user.name,
-          deviceKey: user.barkKey,
+          deviceKey: token.deviceKey,
           skipApprise: true,
         })
       }
