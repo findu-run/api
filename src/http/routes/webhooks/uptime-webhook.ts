@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify'
 import { z } from 'zod'
 import type { ZodTypeProvider } from 'fastify-type-provider-zod'
 import { sendNotification } from '@/lib/notifier/send'
+import { prisma } from '@/lib/prisma'
 
 export async function uptimeWebhook(app: FastifyInstance) {
   app.withTypeProvider<ZodTypeProvider>().post(
@@ -36,28 +37,44 @@ export async function uptimeWebhook(app: FastifyInstance) {
       const { heartbeat, monitor, msg } = request.body
 
       if (!heartbeat || !monitor) {
-        return reply.status(200).send({ ok: true }) // ignorar pings de teste
+        return reply.status(200).send({ ok: true }) // ignora testes
       }
 
-      const status = heartbeat.status
-      const monitorName = monitor.name
-      const url = monitor.url
-
       const event =
-        status === 0
+        heartbeat.status === 0
           ? 'monitoring.down'
-          : status === 1
+          : heartbeat.status === 1
             ? 'monitoring.up'
             : 'monitoring.unstable'
 
-      await sendNotification({
-        event,
-        message: msg || heartbeat.msg || undefined,
-        url,
-        level: status === 0 ? 'critical' : undefined,
-        volume: status === 0 ? 5 : undefined,
-        skipApprise: true,
+      const monitorName = monitor.name
+      const url = monitor.url
+
+      const users = await prisma.user.findMany({
+        where: {
+          barkKey: {
+            not: null,
+          },
+        },
+        select: {
+          name: true,
+          barkKey: true,
+        },
       })
+
+      for (const user of users) {
+        await sendNotification({
+          event,
+          orgName: user.name,
+          // monitorName,
+          // message: msg,
+          url,
+          deviceKey: user.barkKey!,
+          level: heartbeat.status === 0 ? 'critical' : undefined,
+          volume: heartbeat.status === 0 ? 5 : undefined,
+          skipApprise: false,
+        })
+      }
 
       return reply.send({ ok: true })
     },
