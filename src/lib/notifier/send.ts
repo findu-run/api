@@ -52,7 +52,7 @@ export async function sendNotification({
     await appriseProvider.send({
       title: generatedTitle,
       message: generatedMessage,
-      channels: ['bark', 'ntfy'],
+      channels: ['bark'],
     })
   }
 

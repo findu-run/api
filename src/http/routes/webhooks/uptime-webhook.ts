@@ -52,12 +52,11 @@ export async function uptimeWebhook(app: FastifyInstance) {
 
       await sendNotification({
         event,
-        monitorName,
         message: msg || heartbeat.msg || undefined,
         url,
         level: status === 0 ? 'critical' : undefined,
         volume: status === 0 ? 5 : undefined,
-        skipApprise: false,
+        skipApprise: true,
       })
 
       return reply.send({ ok: true })
