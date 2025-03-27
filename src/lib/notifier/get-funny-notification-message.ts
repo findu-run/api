@@ -23,40 +23,44 @@ const funnyMessages: Record<NotificationEvent, ((name: string) => string)[]> = {
   ],
 
   'subscription.expiring': [
+    (name) => `⏳ Ei ${name}, sua assinatura tá quase vencendo! Bora renovar?`,
     (name) =>
-      `⏳ Ei ${name}, sua assinatura está vencendo. Hora de renovar ou dizer adeus.`,
-    (name) => `🚨 Última chamada, ${name}! A assinatura vai expirar.`,
+      `🚨 Última chamada, ${name}! Sua assinatura vai expirar. Tá preparado?`,
   ],
 
   'usage.limit-reached': [
-    (name) => `📉 ${name}, você usou tudo! Requisições esgotadas.`,
-    (name) => `🚫 Acabaram os créditos, ${name}. Hora de pensar em um upgrade.`,
+    (name) => `📉 ${name}, você usou tudo! As requisições acabaram. 😬`,
+    (name) => `🚫 Créditos esgotados, ${name}. Que tal um upgrade agora?`,
   ],
 
   'monitoring.down': [
-    (name) => `🚨 Alerta! O serviço ${name} caiu igual conexão de Wi-Fi ruim.`,
-    (name) => `🧯 Opa, ${name} saiu do ar! Liga o modo pânico.`,
+    (name) =>
+      `🚨 Atenção, ${name}! Nosso serviço tá fora do ar. Já estamos resolvendo!`,
+    (name) =>
+      `💥 ${name}, parece que nosso sistema deu uma pausa. Calma que já voltamos!`,
   ],
 
   'monitoring.up': [
-    (name) => `✅ ${name} está de volta! A lenda reviveu.`,
-    (name) => `🎉 ${name} voltou pro jogo. Pode desligar o modo desespero.`,
+    (name) => `✅ Voltamos, ${name}! Tudo certo por aqui de novo. 👨‍🔧`,
+    (name) => `🎉 API de pé novamente, ${name}! Pode respirar aliviado.`,
   ],
 
   'monitoring.unstable': [
-    (name) => `⚠️ ${name} está com soluços técnicos. Algo tá oscilando.`,
     (name) =>
-      `😐 ${name} não decide se fica ou se vai. Instabilidade detectada.`,
+      `⚠️ ${name}, detectamos instabilidade. Estamos monitorando de perto!`,
+    (name) =>
+      `🤔 ${name}, algo estranho rolando na nossa API. Estamos de olho.`,
   ],
 
   'user.bark-connected': [
-    (name) => `🔔 Dispositivo Bark conectado com sucesso para ${name}.`,
-    (name) => `📱 ${name} ativou notificações via Bark. Agora é só alegria.`,
+    (name) => `📲 Boa, ${name}! Seu dispositivo tá pronto pra receber alertas.`,
+    (name) =>
+      `🔔 Conexão feita com sucesso, ${name}. Agora você vai estar por dentro de tudo.`,
   ],
 
   'custom.manual': [
-    (name) => `👀 ${name}, você recebeu uma notificação manual.`,
-    (name) => `💬 O administrador mandou um alô pra você, ${name}.`,
+    (name) => `👀 ${name}, chegou uma notificação personalizada pra você.`,
+    (name) => `💬 O administrador mandou um recado, ${name}. Confere aí.`,
   ],
 }
 
