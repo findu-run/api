@@ -21,7 +21,7 @@ export async function sendBarkDirect({
   device_key,
   device_keys,
 }: SendBarkDirectParams) {
-  const DEFAULT_BARK_ICON = ''
+  const DEFAULT_BARK_ICON = 'https://i.ibb.co/xPLDdtp/logo.png'
   const queryParams = new URLSearchParams()
 
   queryParams.append('icon', icon || DEFAULT_BARK_ICON)

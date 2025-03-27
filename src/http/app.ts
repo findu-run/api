@@ -51,6 +51,7 @@ import { fastifySchedule } from '@fastify/schedule'
 
 import { registerBark } from './routes/integrations/bark/register'
 import { testNotificationRoute } from './routes/notifications/test'
+import { uptimeWebhook } from './routes/webhooks/uptime-webhook'
 
 export const app = fastify().withTypeProvider<ZodTypeProvider>()
 
@@ -92,6 +93,8 @@ app.register(fastifySchedule)
 
 app.register(healthChecker)
 app.register(testNotificationRoute)
+app.register(uptimeWebhook)
+
 app.register(updateUserBarkKey)
 app.register(registerBark)
 app.register(connectBark)

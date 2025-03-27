@@ -4,7 +4,7 @@ import { z } from 'zod'
 import type { ZodTypeProvider } from 'fastify-type-provider-zod'
 import { sendNotification } from '@/lib/notifier/send'
 
-export async function uptimeWebhookRoute(app: FastifyInstance) {
+export async function uptimeWebhook(app: FastifyInstance) {
   app.withTypeProvider<ZodTypeProvider>().post(
     '/webhooks/uptime',
     {
