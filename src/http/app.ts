@@ -44,12 +44,13 @@ import { getPendingInvites } from './routes/invites/get-pending-invites'
 import { rejectInvite } from './routes/invites/reject-invite'
 import { revokeInvite } from './routes/invites/revoke-invite'
 import { healthChecker } from './routes/health/health-checker'
-import { testNotification } from './routes/health/test-notification'
+
 import { updateUserBarkKey } from './routes/integrations/bark/update-bark-key'
 import { connectBark } from './routes/integrations/bark/connect'
 import { fastifySchedule } from '@fastify/schedule'
 
 import { registerBark } from './routes/integrations/bark/register'
+import { testNotificationRoute } from './routes/notifications/test'
 
 export const app = fastify().withTypeProvider<ZodTypeProvider>()
 
@@ -90,7 +91,7 @@ app.setErrorHandler(errorHandler)
 app.register(fastifySchedule)
 
 app.register(healthChecker)
-app.register(testNotification)
+app.register(testNotificationRoute)
 app.register(updateUserBarkKey)
 app.register(registerBark)
 app.register(connectBark)
