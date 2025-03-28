@@ -8,6 +8,7 @@ import { BadRequestError } from '@/http/_errors/bad-request-error'
 import { fetchCPFData, type CpfDataResponse } from '@/http/external/cpf'
 import { sendNotification } from '@/lib/notifier/send'
 import { convertToBrazilTime } from '@/utils/convert-to-brazil-time'
+import { getClientIp } from '@/utils/get-client-ip'
 
 export async function getCPF(app: FastifyInstance) {
   app.withTypeProvider<ZodTypeProvider>().get(
@@ -39,13 +40,10 @@ export async function getCPF(app: FastifyInstance) {
       const { slug } = request.params
       const { cpf } = request.query
 
-      const userIp = Array.isArray(request.headers['x-forwarded-for'])
-        ? request.headers['x-forwarded-for'][0]
-        : request.headers['x-forwarded-for']?.split(',')[0].trim() ||
-          request.socket.remoteAddress
+      const userIp = getClientIp(request.headers, request.socket)
 
       if (!userIp) {
-        throw new NotFoundError('Ip not found')
+        throw new BadRequestError('No valid IPv4 address found')
       }
 
       const organization = await prisma.organization.findUnique({

@@ -29,6 +29,7 @@
     "fastify-plugin": "^5.0.1",
     "fastify-raw-body": "^5.0.0",
     "fastify-type-provider-zod": "^4.0.2",
+    "ipaddr.js": "2.2.0",
     "toad-scheduler": "3.0.1",
     "tsup": "^8.4.0"
   },
