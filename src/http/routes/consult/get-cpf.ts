@@ -79,7 +79,7 @@ export async function getCPF(app: FastifyInstance) {
 
       const authorizedIps = organization.ipAddress.map((ip) => ip.ip)
       if (!authorizedIps.includes(userIp)) {
-        throw new BadRequestError('Unauthorized IP.')
+        throw new BadRequestError(`${userIp} - Unauthorized IP.`)
       }
 
       const startOfMonth = convertToBrazilTime(new Date())
