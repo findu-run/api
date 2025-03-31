@@ -45,11 +45,11 @@ import { rejectInvite } from './routes/invites/reject-invite'
 import { revokeInvite } from './routes/invites/revoke-invite'
 import { healthChecker } from './routes/health/health-checker'
 
-import { updateUserBarkKey } from './routes/integrations/bark/update-bark-key'
-import { connectBark } from './routes/integrations/bark/connect'
+import { updateUserBarkKey } from './routes/integrations/notifications/bark/update-bark-key'
+import { connectBark } from './routes/integrations/notifications/bark/connect'
 import { fastifySchedule } from '@fastify/schedule'
 
-import { registerBark } from './routes/integrations/bark/register'
+import { registerBark } from './routes/integrations/notifications/bark/register'
 import { testNotificationRoute } from './routes/notifications/test'
 import { uptimeWebhook } from './routes/webhooks/uptime-webhook'
 import { testTrialFlow } from './routes/health/testTrialFlow'
@@ -58,6 +58,7 @@ import { subscriptionsCheckSchedule } from '@/schedules/subscriptions-check'
 import { getJobsStatus } from './routes/health/getJobsStatus'
 import { ToadScheduler, type CronJob } from 'toad-scheduler'
 import { getInstabilityMetrics } from './routes/metrics/get-instability-metrics'
+import { getBarkConnectionStatus } from './routes/integrations/notifications/bark/get-bark-connection-status'
 
 export const app = fastify().withTypeProvider<ZodTypeProvider>()
 
@@ -111,6 +112,7 @@ app.register(uptimeWebhook)
 app.register(updateUserBarkKey)
 app.register(registerBark)
 app.register(connectBark)
+app.register(getBarkConnectionStatus)
 
 app.register(createAccount)
 app.register(authenticateWithPassword)

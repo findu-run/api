@@ -25,7 +25,7 @@ const funnyMessages: Record<NotificationEvent, ((name: string) => string)[]> = {
     (name) =>
       `🧾 Eita, ${name}! Gastando igual gente grande, já mandamos a fatura pra te sacanear!`,
     (name) =>
-      `💰 Compra nova na área, ${name}! Espero que tenha grana pra pagar essa zoeira!`,
+      `💰 Compra nova na área, ${name}! Espero que tenha grana pra pagar essa porr*!`,
   ],
 
   'subscription.expiring': [
@@ -94,7 +94,7 @@ const funnyMessages: Record<NotificationEvent, ((name: string) => string)[]> = {
   // Novos eventos
   'addon.canceled': [
     (name) =>
-      `🗑️ ${name}, jogou o addon fora, hein? Tá economizando ou só cansado da zoeira?`,
+      `🗑️ ${name}, jogou o addon fora, hein? Tá economizando ou só cansado dessa porr*?`,
     (name) =>
       `🚫 Eita, ${name}! Cancelou o addon, agora vai ficar só no basicão, seu pão-duro!`,
     (name) =>
@@ -153,7 +153,7 @@ function getTitlePrefix(event: NotificationEvent): string {
     case 'purchase.created':
       return `${prefix}Compra na lata `
     case 'user.bark-connected':
-      return `${prefix}Conectado na zoeira `
+      return `${prefix}Conectado `
     case 'custom.manual':
       return `${prefix}Recadinho esperto `
     case 'addon.canceled':
