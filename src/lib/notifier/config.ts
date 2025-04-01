@@ -15,4 +15,6 @@ export const NOTIFICATION_CHANNELS: Record<
   'monitoring.unstable': ['bark'],
   'custom.manual': ['bark'],
   'user.bark-connected': ['bark'],
+  'addon.canceled': [],
+  'plan.changed': [],
 }

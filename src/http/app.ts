@@ -61,6 +61,9 @@ import { getInstabilityMetrics } from './routes/metrics/get-instability-metrics'
 import { getBarkConnectionStatus } from './routes/integrations/notifications/bark/get-bark-connection-status'
 import { getOrganizationIps } from './routes/organization/get-organization-ips'
 import { getInvoices } from './routes/billing/invoice/get-invoices'
+import { getAvailablePlans } from './routes/billing/get-available-plans'
+import { getBillingSummary } from './routes/billing/get-billing-summary'
+import { sendFunnyOrCustomNotificationRoute } from './notifications/custom'
 
 export const app = fastify().withTypeProvider<ZodTypeProvider>()
 
@@ -107,6 +110,7 @@ app.register(generateMonthlyInvoices)
 app.register(subscriptionsCheckSchedule)
 
 app.register(healthChecker)
+app.register(sendFunnyOrCustomNotificationRoute)
 app.register(testNotificationRoute)
 app.register(testTrialFlow)
 app.register(uptimeWebhook)
@@ -143,9 +147,11 @@ app.register(getInstabilityMetrics)
 app.register(cancelSubscription)
 app.register(generatePaymentLink)
 app.register(getBillingDetails)
+app.register(getBillingSummary)
 app.register(getOrganizationBilling)
 
 app.register(getInvoices)
+app.register(getAvailablePlans)
 
 app.register(getMembers)
 app.register(removeMember)
