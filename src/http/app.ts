@@ -60,6 +60,7 @@ import { ToadScheduler, type CronJob } from 'toad-scheduler'
 import { getInstabilityMetrics } from './routes/metrics/get-instability-metrics'
 import { getBarkConnectionStatus } from './routes/integrations/notifications/bark/get-bark-connection-status'
 import { getOrganizationIps } from './routes/organization/get-organization-ips'
+import { getInvoices } from './routes/billing/invoice/get-invoices'
 
 export const app = fastify().withTypeProvider<ZodTypeProvider>()
 
@@ -143,6 +144,8 @@ app.register(cancelSubscription)
 app.register(generatePaymentLink)
 app.register(getBillingDetails)
 app.register(getOrganizationBilling)
+
+app.register(getInvoices)
 
 app.register(getMembers)
 app.register(removeMember)
