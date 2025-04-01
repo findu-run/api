@@ -59,6 +59,7 @@ import { getJobsStatus } from './routes/health/getJobsStatus'
 import { ToadScheduler, type CronJob } from 'toad-scheduler'
 import { getInstabilityMetrics } from './routes/metrics/get-instability-metrics'
 import { getBarkConnectionStatus } from './routes/integrations/notifications/bark/get-bark-connection-status'
+import { getOrganizationIps } from './routes/organization/get-organization-ips'
 
 export const app = fastify().withTypeProvider<ZodTypeProvider>()
 
@@ -127,6 +128,7 @@ app.register(shutdownOrganization)
 app.register(getOrganizationLogs)
 
 app.register(addIpAddress)
+app.register(getOrganizationIps)
 app.register(checkRequestLimit)
 app.register(updateIpAddress)
 app.register(removeIpAddress)
