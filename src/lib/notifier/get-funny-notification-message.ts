@@ -120,7 +120,7 @@ export function getFunnyNotificationMessage({
 }: EventParams) {
   if (customTitle || customMessage) {
     return {
-      title: customTitle ?? '🔔 Notificação do Findão',
+      title: customTitle ?? '🔔 Notificação do Boss',
       message: customMessage ?? 'Sem mensagem? Que preguiça, hein!',
     }
   }
