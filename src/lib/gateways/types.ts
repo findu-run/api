@@ -27,8 +27,19 @@ export interface CreatePaymentParams {
 }
 
 export interface CreatePaymentResponse {
-  paymentId: string
-  url?: string // PIX QR Code ou link de redirecionamento
+  payment_code: string
+  external_code: string
+  payment_method: string
+  payment_status: string
+  payment_amount: number
+  sale_amount: number
+  shipping_amount: number
+  installments: number
+  installment_amount: number
+  pix?: {
+    pix_link: string
+    pix_qrcode_text: string
+  }
 }
 
 export interface PaymentGateway {

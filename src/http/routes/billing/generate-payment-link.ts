@@ -52,15 +52,28 @@ export async function generatePaymentLink(app: FastifyInstance) {
           }),
           response: {
             200: z.object({
-              paymentUrl: z.string().optional(),
-              paymentId: z.string(),
+              payment_code: z.string(),
+              external_code: z.string(),
+              payment_method: z.string(),
+              payment_status: z.string(),
+              payment_amount: z.number(),
+              sale_amount: z.number(),
+              shipping_amount: z.number(),
+              installments: z.number(),
+              installment_amount: z.number(),
+              pix: z
+                .object({
+                  pix_link: z.string(),
+                  pix_qrcode_text: z.string(),
+                })
+                .optional(),
             }),
+            400: z.object({ error: z.string() }), // Adicionado para erro de fatura pendente
             502: z.object({ error: z.string() }),
           },
         },
       },
       async (request, reply) => {
-        // No início da rota
         app.log.info('📥 Rota de pagamento chamada')
         const { slug } = request.params
         const { paymentMethod, document, phoneNumber, items, card } =
@@ -94,9 +107,64 @@ export async function generatePaymentLink(app: FastifyInstance) {
           0,
         )
 
-        // Antes de criar o invoice
         app.log.info({ totalAmount }, '💰 Valor total do pagamento')
 
+        // Verificar se já existe uma fatura pendente
+        const existingInvoice = await prisma.invoice.findFirst({
+          where: {
+            organizationId: organization.id,
+            status: 'PENDING',
+          },
+          select: {
+            id: true,
+            amount: true,
+            paymentUrl: true,
+            paymentId: true,
+          },
+        })
+
+        if (existingInvoice) {
+          // Verificar se o valor da fatura existente é compatível
+          if (existingInvoice.amount === totalAmount) {
+            app.log.info(
+              { invoiceId: existingInvoice.id },
+              '🔄 Reutilizando fatura pendente existente',
+            )
+
+            // Se já tiver paymentUrl e paymentId, podemos buscar o status do pagamento no gateway
+            if (existingInvoice.paymentUrl && existingInvoice.paymentId) {
+              const gateway = await getGateway()
+              // Aqui você poderia adicionar uma lógica para verificar o status no gateway, se disponível
+              // Por enquanto, vamos assumir que a fatura existente já tem os dados necessários
+              return reply.send({
+                payment_code: existingInvoice.paymentId,
+                external_code: existingInvoice.id,
+                payment_method: paymentMethod,
+                payment_status: 'pending', // Pode ser ajustado com uma chamada ao gateway
+                payment_amount: totalAmount,
+                sale_amount: totalAmount,
+                shipping_amount: 0,
+                installments: 1,
+                installment_amount: totalAmount,
+                pix:
+                  paymentMethod === 'pix'
+                    ? {
+                        pix_link: existingInvoice.paymentUrl,
+                        pix_qrcode_text: '',
+                      }
+                    : undefined,
+              })
+            }
+          } else {
+            // Se o valor não for compatível, retornar erro
+            return reply.status(400).send({
+              error:
+                'Já existe uma fatura pendente com valor diferente. Cancele ou pague a fatura existente antes de criar uma nova.',
+            })
+          }
+        }
+
+        // Se não houver fatura pendente, criar uma nova
         const dueDate = dayjs().tz('America/Sao_Paulo').add(3, 'day').toDate()
 
         const invoice = await prisma.invoice.create({
@@ -120,12 +188,6 @@ export async function generatePaymentLink(app: FastifyInstance) {
             phone: phoneNumber,
             ip,
           }
-
-          // Antes de chamar o gateway
-          app.log.info(
-            { customer, items },
-            '📦 Dados do cliente e itens prontos para o gateway',
-          )
 
           const paymentParams = {
             amount: totalAmount,
@@ -162,24 +224,19 @@ export async function generatePaymentLink(app: FastifyInstance) {
             throw new Error('Unsupported payment method.')
           }
 
-          // Depois da resposta do gateway
-          app.log.info({ payment }, '✅ Pagamento recebido do gateway')
-
           await prisma.invoice.update({
             where: { id: invoice.id },
             data: {
-              paymentUrl: payment.url,
-              paymentId: payment.paymentId,
+              paymentUrl: payment.pix?.pix_link,
+              paymentId: payment.payment_code,
             },
           })
 
           app.log.info(
-            `💸 Payment link generated for invoice ${invoice.id}: ${payment.url || payment.paymentId}`,
+            `💸 Payment link generated for invoice ${invoice.id}: ${payment.pix?.pix_link || payment.payment_code}`,
           )
-          return reply.send({
-            paymentUrl: payment.url,
-            paymentId: payment.paymentId,
-          })
+
+          return reply.send(payment)
         } catch (error) {
           app.log.error('Error generating payment link:', error)
           return reply

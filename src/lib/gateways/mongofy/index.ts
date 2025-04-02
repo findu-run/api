@@ -25,13 +25,13 @@ export class MangofyGateway implements PaymentGateway {
   ): Promise<CreatePaymentResponse> {
     console.log('📤 [Mangofy] Enviando pagamento PIX')
 
-    // Garantir que o CPF tenha 11 dígitos e seja apenas números
+    // Validação do CPF
     const document = params.customer.document.replace(/\D/g, '')
     if (document.length !== 11) {
       throw new Error('O CPF deve ter exatamente 11 dígitos.')
     }
 
-    // Garantir que o telefone tenha 11 dígitos e seja apenas números
+    // Validação do telefone
     const phone = params.customer.phone.replace(/\D/g, '')
     if (phone.length !== 11) {
       throw new Error(
@@ -79,7 +79,6 @@ export class MangofyGateway implements PaymentGateway {
 
       console.log('✅ [Mangofy] Resposta recebida:', response.data)
 
-      // Ajustar a validação para os campos reais da Mangofy
       if (
         !response.data ||
         !response.data.payment_code ||
@@ -89,10 +88,8 @@ export class MangofyGateway implements PaymentGateway {
         throw new Error('Resposta inválida da API da Mangofy.')
       }
 
-      return {
-        paymentId: response.data.payment_code, // Usar payment_code
-        url: response.data.pix.pix_link, // Usar pix.pix_link
-      }
+      // Retornar a resposta bruta da Mangofy
+      return response.data
     } catch (error: any) {
       console.error(
         '❌ [Mangofy] Erro ao criar pagamento PIX:',
