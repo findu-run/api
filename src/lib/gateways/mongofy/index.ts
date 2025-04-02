@@ -1,4 +1,3 @@
-import { env } from '@/env'
 import type {
   PaymentGateway,
   CreatePaymentParams,
@@ -24,6 +23,15 @@ export class MangofyGateway implements PaymentGateway {
   async createPixPayment(
     params: CreatePaymentParams,
   ): Promise<CreatePaymentResponse> {
+    console.log('📤 [Mangofy] Enviando pagamento PIX')
+    console.log('📦 Payload:', {
+      store_code: this.apiKey,
+      amount: params.amount,
+      invoiceId: params.invoiceId,
+      customer: params.customer,
+      items: params.items,
+    })
+
     try {
       const response = await axios.post(
         this.baseUrl,
@@ -31,7 +39,6 @@ export class MangofyGateway implements PaymentGateway {
           store_code: this.apiKey,
           payment_method: 'pix',
           payment_format: 'regular',
-          // Campo obrigatório mesmo para PIX:
           installments: 1,
           payment_amount: params.amount,
           postback_url: params.postbackUrl,
@@ -56,17 +63,17 @@ export class MangofyGateway implements PaymentGateway {
         {
           headers: {
             Authorization: this.secretKey,
+            'Store-Code': this.apiKey,
             'Content-Type': 'application/json',
             Accept: 'application/json',
           },
         },
       )
 
+      console.log('✅ [Mangofy] Resposta recebida:', response.data)
+
       if (!response.data || !response.data.code || !response.data.url) {
-        console.error(
-          '[MangofyGateway] Resposta inválida da API:',
-          response.data,
-        )
+        console.error('❌ [Mangofy] Resposta inválida da API:', response.data)
         throw new Error('Resposta inválida da API da Mangofy.')
       }
 
@@ -74,14 +81,14 @@ export class MangofyGateway implements PaymentGateway {
         paymentId: response.data.code,
         url: response.data.url,
       }
-      // biome-ignore lint/suspicious/noExplicitAny: <explanation>
     } catch (error: any) {
       console.error(
-        '[MangofyGateway] Erro ao criar pagamento PIX:',
+        '❌ [Mangofy] Erro ao criar pagamento PIX:',
         error.response?.data || error.message,
       )
       const message =
         error.response?.data?.message ||
+        error.message ||
         'Erro desconhecido ao gerar link de pagamento.'
       throw new Error(message)
     }
@@ -93,6 +100,15 @@ export class MangofyGateway implements PaymentGateway {
     if (!params.card) {
       throw new Error('Card details are required for credit card payment.')
     }
+
+    console.log('📤 [Mangofy] Enviando pagamento com cartão')
+    console.log('📦 Payload:', {
+      store_code: this.apiKey,
+      amount: params.amount,
+      invoiceId: params.invoiceId,
+      customer: params.customer,
+      items: params.items,
+    })
 
     const response = await axios.post(
       this.baseUrl,
@@ -126,12 +142,15 @@ export class MangofyGateway implements PaymentGateway {
       },
       {
         headers: {
-          Authorization: `Bearer ${this.secretKey}`,
+          Authorization: this.secretKey, // Secret Key no Authorization
+          'Store-Code': this.apiKey, // API Key no Store-Code
           'Content-Type': 'application/json',
           Accept: 'application/json',
         },
       },
     )
+
+    console.log('✅ [Mangofy] Resposta recebida:', response.data)
 
     return {
       paymentId: response.data.code,

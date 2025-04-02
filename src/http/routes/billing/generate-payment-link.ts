@@ -60,11 +60,17 @@ export async function generatePaymentLink(app: FastifyInstance) {
         },
       },
       async (request, reply) => {
+        // No início da rota
+        app.log.info('📥 Rota de pagamento chamada')
         const { slug } = request.params
         const { paymentMethod, document, phoneNumber, items, card } =
           request.body
         const userId = await request.getCurrentUserId()
+
+        app.log.info({ userId }, '👤 ID do usuário autenticado')
+
         const ip = getClientIp(request.headers, request.socket)
+        app.log.info({ ip }, '🌐 IP do cliente identificado')
 
         const organization = await prisma.organization.findUnique({
           where: { slug },
@@ -79,12 +85,17 @@ export async function generatePaymentLink(app: FastifyInstance) {
           throw new NotFoundError('Organization not found.')
         }
 
+        app.log.info({ organization }, '🏢 Organização localizada')
+
         await ensureIsAdminOrOwner(userId, organization.id)
 
         const totalAmount = items.reduce(
           (sum, item) => sum + item.amount * item.quantity,
           0,
         )
+
+        // Antes de criar o invoice
+        app.log.info({ totalAmount }, '💰 Valor total do pagamento')
 
         const dueDate = dayjs().tz('America/Sao_Paulo').add(3, 'day').toDate()
 
@@ -109,6 +120,12 @@ export async function generatePaymentLink(app: FastifyInstance) {
             phone: phoneNumber,
             ip,
           }
+
+          // Antes de chamar o gateway
+          app.log.info(
+            { customer, items },
+            '📦 Dados do cliente e itens prontos para o gateway',
+          )
 
           const paymentParams = {
             amount: totalAmount,
@@ -144,6 +161,9 @@ export async function generatePaymentLink(app: FastifyInstance) {
           } else {
             throw new Error('Unsupported payment method.')
           }
+
+          // Depois da resposta do gateway
+          app.log.info({ payment }, '✅ Pagamento recebido do gateway')
 
           await prisma.invoice.update({
             where: { id: invoice.id },
