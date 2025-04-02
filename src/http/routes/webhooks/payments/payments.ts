@@ -24,7 +24,7 @@ export async function paymentWebhookRoute(app: FastifyInstance) {
     async (request, reply) => {
       try {
         // Logar tudo que chega
-        app.log.info('📥 Webhook chamado!', {
+        console.log('📥 Webhook chamado!', {
           ip: request.ip,
           query: request.query,
           body: request.body,
