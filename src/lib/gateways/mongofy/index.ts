@@ -55,7 +55,7 @@ export class MangofyGateway implements PaymentGateway {
         },
         {
           headers: {
-            Authorization: `Bearer ${this.secretKey}`, // Caso a API não use Bearer, remova a palavra.
+            Authorization: this.secretKey,
             'Content-Type': 'application/json',
             Accept: 'application/json',
           },
