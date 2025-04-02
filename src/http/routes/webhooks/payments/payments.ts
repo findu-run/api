@@ -9,28 +9,34 @@ export async function paymentWebhookRoute(app: FastifyInstance) {
       schema: {
         tags: ['Webhooks'],
         summary: 'Recebe notificação de pagamento do Mangofy',
-        querystring: z.object({
-          provider: z.string().optional(), // Permitir provider opcional
-        }),
-        body: z.any(), // Aceitar qualquer payload sem validação
+        querystring: z.any(), // Aceita qualquer querystring sem validação
+        body: z.any(), // Aceita qualquer body sem validação
         response: {
           200: z.object({
+            message: z.string(),
+          }),
+          500: z.object({
             message: z.string(),
           }),
         },
       },
     },
     async (request, reply) => {
-      // Logar tudo que chega
-      app.log.info('📥 Webhook chamado!', {
-        ip: request.ip,
-        query: request.query,
-        body: request.body,
-        headers: request.headers,
-      })
+      try {
+        // Logar tudo que chega
+        app.log.info('📥 Webhook chamado!', {
+          ip: request.ip,
+          query: request.query,
+          body: request.body,
+          headers: request.headers,
+        })
 
-      // Retornar uma resposta simples para a Mangofy
-      return reply.send({ message: 'Webhook recebido com sucesso' })
+        // Retornar uma resposta simples para a Mangofy
+        return reply.send({ message: 'Webhook recebido com sucesso' })
+      } catch (error) {
+        app.log.error('Erro ao processar webhook:', error)
+        return reply.status(500).send({ message: 'Internal server error' })
+      }
     },
   )
 }
