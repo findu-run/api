@@ -69,7 +69,10 @@ export const app = fastify().withTypeProvider<ZodTypeProvider>()
 
 app.register(fastifyRawBody, { field: 'rawBody', runFirst: true })
 
-app.register(fastifyCors)
+app.register(fastifyCors, {
+  origin: env.NODE_ENV === 'production' ? ['https://app.findu.run'] : true,
+  credentials: true,
+})
 
 app.register(fastifyJwt, {
   secret: env.JWT_SECRET,
