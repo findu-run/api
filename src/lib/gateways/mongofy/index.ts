@@ -23,44 +23,68 @@ export class MangofyGateway implements PaymentGateway {
   async createPixPayment(
     params: CreatePaymentParams,
   ): Promise<CreatePaymentResponse> {
-    const response = await axios.post(
-      this.baseUrl,
-      {
-        store_code: this.apiKey,
-        payment_method: 'pix',
-        payment_format: 'regular',
-        payment_amount: params.amount,
-        postback_url: params.postbackUrl,
-        external_code: params.invoiceId,
-        pix: {
-          expires_in_days: 3,
-        },
-        customer: {
-          name: params.customer.name,
-          email: params.customer.email,
-          document: params.customer.document,
-          phone: params.customer.phone,
-          ip: params.customer.ip,
-        },
-        items: params.items?.map((item) => ({
-          code: item.code,
-          name: item.name,
-          amount: item.amount,
-          total: item.amount * item.quantity,
-        })),
-      },
-      {
-        headers: {
-          Authorization: this.secretKey,
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
-        },
-      },
-    )
+    console.log('[Mangofy] Usando secretKey (início):', this.secretKey)
 
-    return {
-      paymentId: response.data.code,
-      url: response.data.url, // QR Code ou link de pagamento
+    try {
+      const response = await axios.post(
+        this.baseUrl,
+        {
+          store_code: this.apiKey,
+          payment_method: 'pix',
+          payment_format: 'regular',
+          payment_amount: params.amount,
+          postback_url: params.postbackUrl,
+          external_code: params.invoiceId,
+          pix: {
+            expires_in_days: 3,
+          },
+          customer: {
+            name: params.customer.name,
+            email: params.customer.email,
+            document: params.customer.document,
+            phone: params.customer.phone,
+            ip: params.customer.ip,
+          },
+          items: params.items?.map((item) => ({
+            code: item.code,
+            name: item.name,
+            amount: item.amount,
+            total: item.amount * item.quantity,
+          })),
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${this.secretKey}`, // <- aqui foi ajustado
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+          },
+        },
+      )
+
+      if (!response.data || !response.data.code || !response.data.url) {
+        console.error(
+          '[MangofyGateway] Resposta inválida da API:',
+          response.data,
+        )
+        throw new Error('Resposta inválida da API da Mangofy.')
+      }
+
+      return {
+        paymentId: response.data.code,
+        url: response.data.url,
+      }
+      // biome-ignore lint/suspicious/noExplicitAny: <explanation>
+    } catch (error: any) {
+      console.error(
+        '[MangofyGateway] Erro ao criar pagamento PIX:',
+        error.response?.data || error.message,
+      )
+
+      const message =
+        error.response?.data?.message ||
+        'Erro desconhecido ao gerar link de pagamento.'
+
+      throw new Error(message)
     }
   }
 
@@ -103,7 +127,7 @@ export class MangofyGateway implements PaymentGateway {
       },
       {
         headers: {
-          Authorization: this.secretKey,
+          Authorization: `Bearer ${this.secretKey}`, // <- também aqui
           'Content-Type': 'application/json',
           Accept: 'application/json',
         },
@@ -112,7 +136,7 @@ export class MangofyGateway implements PaymentGateway {
 
     return {
       paymentId: response.data.code,
-      url: response.data.url, // Pode ser um redirect ou vazio dependendo da resposta
+      url: response.data.url,
     }
   }
 }

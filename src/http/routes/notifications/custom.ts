@@ -5,7 +5,7 @@ import type { NotificationEvent } from '@/lib/notifier/events'
 import { getFunnyNotificationMessage } from '@/lib/notifier/get-funny-notification-message'
 import { sendBarkDirect } from '@/lib/notifier/providers/bark/bark-direct'
 import type { ZodTypeProvider } from 'fastify-type-provider-zod'
-import { auth } from '../middlewares/auth'
+import { auth } from '../../middlewares/auth'
 
 export async function sendFunnyOrCustomNotificationRoute(app: FastifyInstance) {
   app
@@ -41,43 +41,67 @@ export async function sendFunnyOrCustomNotificationRoute(app: FastifyInstance) {
           emails,
         } = request.body
 
-        const users = await prisma.user.findMany({
+        // Busca usuários com tokens que possuem deviceKey não nulo
+        const usersWithToken = await prisma.user.findMany({
           where: {
             ...(emails ? { email: { in: emails } } : {}),
-            barkKey: { not: null },
+            tokens: {
+              some: {
+                deviceKey: {
+                  not: null,
+                },
+              },
+            },
           },
           select: {
             email: true,
             name: true,
-            barkKey: true,
+            tokens: {
+              where: {
+                deviceKey: {
+                  not: null,
+                },
+              },
+              select: {
+                deviceKey: true,
+              },
+            },
           },
         })
 
-        if (!users.length) {
+        if (!usersWithToken.length) {
           return reply.status(404).send({ success: false, sent: 0 })
         }
 
-        await Promise.all(
-          users.map((user) => {
-            const { title, message } = getFunnyNotificationMessage({
-              event,
-              orgName: orgName ?? user.name ?? user.email,
-              monitorName,
-              customTitle,
-              customMessage,
-            })
+        let countSent = 0
 
-            return sendBarkDirect({
-              title,
-              body: message,
-              device_key: user.barkKey!,
-            })
-          }),
+        // Para cada usuário, envia notificação para cada token com deviceKey
+        await Promise.all(
+          usersWithToken.map((user) =>
+            Promise.all(
+              user.tokens.map((token) => {
+                const { title, message } = getFunnyNotificationMessage({
+                  event,
+                  orgName: orgName ?? user.name ?? user.email,
+                  monitorName,
+                  customTitle,
+                  customMessage,
+                })
+
+                countSent++
+                return sendBarkDirect({
+                  title,
+                  body: message,
+                  device_key: token.deviceKey!,
+                })
+              }),
+            ),
+          ),
         )
 
         return reply.send({
           success: true,
-          sent: users.length,
+          sent: countSent,
         })
       },
     })

@@ -63,7 +63,7 @@ import { getOrganizationIps } from './routes/organization/get-organization-ips'
 import { getInvoices } from './routes/billing/invoice/get-invoices'
 import { getAvailablePlans } from './routes/billing/get-available-plans'
 import { getBillingSummary } from './routes/billing/get-billing-summary'
-import { sendFunnyOrCustomNotificationRoute } from './notifications/custom'
+import { sendFunnyOrCustomNotificationRoute } from './routes/notifications/custom'
 
 export const app = fastify().withTypeProvider<ZodTypeProvider>()
 
