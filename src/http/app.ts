@@ -64,6 +64,7 @@ import { getInvoices } from './routes/billing/invoice/get-invoices'
 import { getAvailablePlans } from './routes/billing/get-available-plans'
 import { getBillingSummary } from './routes/billing/get-billing-summary'
 import { sendFunnyOrCustomNotificationRoute } from './routes/notifications/custom'
+import { paymentWebhookRoute } from './routes/webhooks/payments/payments'
 
 export const app = fastify().withTypeProvider<ZodTypeProvider>()
 
@@ -114,6 +115,7 @@ app.register(sendFunnyOrCustomNotificationRoute)
 app.register(testNotificationRoute)
 app.register(testTrialFlow)
 app.register(uptimeWebhook)
+app.register(paymentWebhookRoute)
 
 app.register(updateUserBarkKey)
 app.register(registerBark)
