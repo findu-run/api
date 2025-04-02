@@ -1,3 +1,4 @@
+import { env } from '@/env'
 import type {
   PaymentGateway,
   CreatePaymentParams,
@@ -23,8 +24,6 @@ export class MangofyGateway implements PaymentGateway {
   async createPixPayment(
     params: CreatePaymentParams,
   ): Promise<CreatePaymentResponse> {
-    console.log('[Mangofy] Usando secretKey (início):', this.secretKey)
-
     try {
       const response = await axios.post(
         this.baseUrl,
@@ -32,6 +31,8 @@ export class MangofyGateway implements PaymentGateway {
           store_code: this.apiKey,
           payment_method: 'pix',
           payment_format: 'regular',
+          // Campo obrigatório mesmo para PIX:
+          installments: 1,
           payment_amount: params.amount,
           postback_url: params.postbackUrl,
           external_code: params.invoiceId,
@@ -54,7 +55,7 @@ export class MangofyGateway implements PaymentGateway {
         },
         {
           headers: {
-            Authorization: `Bearer ${this.secretKey}`, // <- aqui foi ajustado
+            Authorization: `Bearer ${this.secretKey}`, // Caso a API não use Bearer, remova a palavra.
             'Content-Type': 'application/json',
             Accept: 'application/json',
           },
@@ -79,11 +80,9 @@ export class MangofyGateway implements PaymentGateway {
         '[MangofyGateway] Erro ao criar pagamento PIX:',
         error.response?.data || error.message,
       )
-
       const message =
         error.response?.data?.message ||
         'Erro desconhecido ao gerar link de pagamento.'
-
       throw new Error(message)
     }
   }
@@ -127,7 +126,7 @@ export class MangofyGateway implements PaymentGateway {
       },
       {
         headers: {
-          Authorization: `Bearer ${this.secretKey}`, // <- também aqui
+          Authorization: `Bearer ${this.secretKey}`,
           'Content-Type': 'application/json',
           Accept: 'application/json',
         },

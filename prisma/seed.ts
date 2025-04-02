@@ -57,7 +57,7 @@ async function seed() {
       price: 146699,
       type: PlanTier.BUSINESS,
       isTrialAvailable: false,
-      maxOrganizations: 1,
+      maxOrganizations: 4,
       maxIps: 4,
       maxRequests: 5_000_000,
       ipChangeLimit: 0.5, // 30 min
