@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify'
 import type { ZodTypeProvider } from 'fastify-type-provider-zod'
+import { z } from 'zod'
 
 export async function paymentWebhookRoute(app: FastifyInstance) {
   app.withTypeProvider<ZodTypeProvider>().post(
@@ -8,12 +9,14 @@ export async function paymentWebhookRoute(app: FastifyInstance) {
       schema: {
         tags: ['Webhooks'],
         summary: 'Recebe notificação de pagamento do Mangofy',
-        querystring: {
-          // Mantemos apenas o provider no querystring, sem validação por enquanto
-        },
-        body: {}, // Sem validação do corpo
+        querystring: z.object({
+          provider: z.string().optional(), // Permitir provider opcional
+        }),
+        body: z.any(), // Aceitar qualquer payload sem validação
         response: {
-          200: { message: 'Webhook recebido com sucesso' },
+          200: z.object({
+            message: z.string(),
+          }),
         },
       },
     },
