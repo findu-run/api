@@ -9,7 +9,9 @@ import { auth } from '@/http/middlewares/auth'
 import { prisma } from '@/lib/prisma'
 import { ensureIsAdminOrOwner } from '@/utils/permissions'
 import { NotFoundError } from '@/http/_errors/not-found-error'
+import { convertToBrazilTime } from '@/utils/convert-to-brazil-time'
 
+// Extende os plugins do dayjs
 dayjs.extend(utc)
 dayjs.extend(timezone)
 
@@ -47,11 +49,7 @@ export async function getIpMetrics(app: FastifyInstance) {
       },
       async (request) => {
         const { slug } = request.params
-        let { days, ip } = request.query
-
-        if (ip === 'all') {
-          ip = undefined
-        }
+        const { days, ip } = request.query
 
         const userId = await request.getCurrentUserId()
 
@@ -65,44 +63,57 @@ export async function getIpMetrics(app: FastifyInstance) {
 
         await ensureIsAdminOrOwner(userId, organization.id)
 
-        const startDate = dayjs().subtract(days, 'days').startOf('day').toDate()
+        const startDate = convertToBrazilTime(new Date())
+          .subtract(days, 'days')
+          .startOf('day')
+          .toDate()
+
         const isHourly = days === 1
-        const timeFormat = isHourly ? 'YYYY-MM-DD HH24:00' : 'YYYY-MM-DD'
 
-        // 👇 SQL construído dinamicamente e com segurança
-        let query = `
-          SELECT
-            ip_address AS "ipAddress",
-            to_char(created_at AT TIME ZONE 'America/Sao_Paulo', '${timeFormat}') AS date,
-            COUNT(*) FILTER (WHERE status = 'SUCCESS') AS success,
-            COUNT(*) FILTER (WHERE status != 'SUCCESS') AS failed
-          FROM query_log
-          WHERE organization_id = $1
-            AND created_at >= $2
-        `
+        const logs = await prisma.queryLog.findMany({
+          where: {
+            organizationId: organization.id,
+            createdAt: { gte: startDate },
+            ...(ip ? { ipAddress: ip } : {}),
+          },
+          select: {
+            ipAddress: true,
+            createdAt: true,
+            status: true,
+          },
+        })
 
-        const params: any[] = [organization.id, startDate]
+        const timeFormat = isHourly ? 'YYYY-MM-DD HH:00' : 'YYYY-MM-DD'
+        const grouped = new Map<
+          string,
+          { ipAddress: string; date: string; success: number; failed: number }
+        >()
 
-        if (ip) {
-          query += ' AND ip_address = $3'
-          params.push(ip)
+        for (const log of logs) {
+          const date = convertToBrazilTime(log.createdAt).format(timeFormat)
+
+          const key = `${log.ipAddress}-${date}`
+
+          if (!grouped.has(key)) {
+            grouped.set(key, {
+              ipAddress: log.ipAddress,
+              date,
+              success: 0,
+              failed: 0,
+            })
+          }
+
+          const entry = grouped.get(key)!
+          if (log.status === 'SUCCESS') {
+            entry.success += 1
+          } else {
+            entry.failed += 1
+          }
         }
 
-        query += ' GROUP BY ip_address, date ORDER BY date DESC'
-
-        type AggregatedMetric = {
-          ipAddress: string
-          date: string
-          success: number
-          failed: number
+        return {
+          data: Array.from(grouped.values()),
         }
-
-        const data = await prisma.$queryRawUnsafe<AggregatedMetric[]>(
-          query,
-          ...params,
-        )
-
-        return { data }
       },
     )
 }
