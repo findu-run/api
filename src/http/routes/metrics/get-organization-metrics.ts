@@ -23,24 +23,24 @@ export async function getOrganizationMetrics(app: FastifyInstance) {
             slug: z.string(),
           }),
           querystring: z.object({
-            days: z.coerce.number().min(1).max(30).default(7), // 📅 Quantidade de dias para análise
+            days: z.coerce.number().min(1).max(30).default(7),
           }),
           response: {
             200: z.object({
-              totalRequests: z.number(), // 🔥 Total de consultas no período
-              successfulRequests: z.number(), // ✅ Total de consultas bem-sucedidas
-              failedRequests: z.number(), // ❌ Total de consultas malsucedidas
+              totalRequests: z.number(),
+              successfulRequests: z.number(),
+              failedRequests: z.number(),
               requestsByType: z.array(
                 z.object({
-                  queryType: z.string(), // 🔍 CPF, CNPJ, Placa...
+                  queryType: z.string(),
                   count: z.number(),
-                })
+                }),
               ),
               dailyRequests: z.array(
                 z.object({
-                  date: z.string(), // 📅 Data da consulta
-                  count: z.number(), // 📊 Quantidade de consultas no dia
-                })
+                  date: z.string(),
+                  count: z.number(),
+                }),
               ),
             }),
           },
@@ -63,48 +63,46 @@ export async function getOrganizationMetrics(app: FastifyInstance) {
 
         const startDate = dayjs().subtract(days, 'days').startOf('day').toDate()
 
-        // 📌 Consultas totais no período
-        const totalRequests = await prisma.queryLog.count({
-          where: {
-            organizationId: organization.id,
-            createdAt: { gte: startDate },
-          },
-        })
+        // ✅ Executa tudo em paralelo
+        const [
+          totalRequests,
+          successfulRequests,
+          requestsByType,
+          dailyRequestsRaw,
+        ] = await Promise.all([
+          prisma.queryLog.count({
+            where: {
+              organizationId: organization.id,
+              createdAt: { gte: startDate },
+            },
+          }),
+          prisma.queryLog.count({
+            where: {
+              organizationId: organization.id,
+              createdAt: { gte: startDate },
+              status: 'SUCCESS',
+            },
+          }),
+          prisma.queryLog.groupBy({
+            by: ['queryType'],
+            where: {
+              organizationId: organization.id,
+              createdAt: { gte: startDate },
+            },
+            _count: { id: true },
+          }),
+          prisma.queryLog.groupBy({
+            by: ['createdAt'],
+            where: {
+              organizationId: organization.id,
+              createdAt: { gte: startDate },
+            },
+            _count: { id: true },
+          }),
+        ])
 
-        // ✅ Consultas bem-sucedidas
-        const successfulRequests = await prisma.queryLog.count({
-          where: {
-            organizationId: organization.id,
-            createdAt: { gte: startDate },
-            status: 'SUCCESS',
-          },
-        })
-
-        // ❌ Consultas malsucedidas
-        const failedRequests = totalRequests - successfulRequests
-
-        // 🔍 Consultas agrupadas por tipo (CPF, CNPJ, Placa...)
-        const requestsByType = await prisma.queryLog.groupBy({
-          by: ['queryType'],
-          where: {
-            organizationId: organization.id,
-            createdAt: { gte: startDate },
-          },
-          _count: { id: true },
-        })
-
-        // 📊 Consultas diárias no período
-        const dailyRequestsRaw = await prisma.queryLog.groupBy({
-          by: ['createdAt'],
-          where: {
-            organizationId: organization.id,
-            createdAt: { gte: startDate },
-          },
-          _count: { id: true },
-        })
-
-        // 🔥 Formatando dados diários
-        const dailyRequests = dailyRequestsRaw.map(log => ({
+        // 📊 Formata agrupamento diário
+        const dailyRequests = dailyRequestsRaw.map((log) => ({
           date: dayjs(log.createdAt).format('YYYY-MM-DD'),
           count: log._count.id,
         }))
@@ -112,13 +110,13 @@ export async function getOrganizationMetrics(app: FastifyInstance) {
         return {
           totalRequests,
           successfulRequests,
-          failedRequests,
-          requestsByType: requestsByType.map(entry => ({
+          failedRequests: totalRequests - successfulRequests,
+          requestsByType: requestsByType.map((entry) => ({
             queryType: entry.queryType,
             count: entry._count.id,
           })),
           dailyRequests,
         }
-      }
+      },
     )
 }
