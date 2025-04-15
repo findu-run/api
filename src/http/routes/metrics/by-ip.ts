@@ -9,11 +9,9 @@ import { auth } from '@/http/middlewares/auth'
 import { prisma } from '@/lib/prisma'
 import { ensureIsAdminOrOwner } from '@/utils/permissions'
 import { NotFoundError } from '@/http/_errors/not-found-error'
-import { convertToBrazilTime } from '@/utils/convert-to-brazil-time'
 
 dayjs.extend(utc)
 dayjs.extend(timezone)
-
 export async function getIpMetrics(app: FastifyInstance) {
   app
     .withTypeProvider<ZodTypeProvider>()
@@ -48,7 +46,11 @@ export async function getIpMetrics(app: FastifyInstance) {
       },
       async (request) => {
         const { slug } = request.params
-        const { days, ip } = request.query
+        let { days, ip } = request.query
+
+        if (ip === 'all') {
+          ip = undefined
+        }
 
         const userId = await request.getCurrentUserId()
 
