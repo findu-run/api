@@ -12,6 +12,7 @@ import { NotFoundError } from '@/http/_errors/not-found-error'
 
 dayjs.extend(utc)
 dayjs.extend(timezone)
+
 export async function getIpMetrics(app: FastifyInstance) {
   app
     .withTypeProvider<ZodTypeProvider>()
@@ -68,8 +69,8 @@ export async function getIpMetrics(app: FastifyInstance) {
         const isHourly = days === 1
         const timeFormat = isHourly ? 'YYYY-MM-DD HH24:00' : 'YYYY-MM-DD'
 
-        // 🔍 Agregação SQL direta (evita loop manual)
-        const query = `
+        // 👇 SQL construído dinamicamente e com segurança
+        let query = `
           SELECT
             ip_address AS "ipAddress",
             to_char(created_at AT TIME ZONE 'America/Sao_Paulo', '${timeFormat}') AS date,
@@ -78,14 +79,16 @@ export async function getIpMetrics(app: FastifyInstance) {
           FROM query_log
           WHERE organization_id = $1
             AND created_at >= $2
-            ${ip ? 'AND ip_address = $3' : ''}
-          GROUP BY ip_address, date
-          ORDER BY date DESC
         `
 
-        const params = ip
-          ? [organization.id, startDate, ip]
-          : [organization.id, startDate]
+        const params: any[] = [organization.id, startDate]
+
+        if (ip) {
+          query += ' AND ip_address = $3'
+          params.push(ip)
+        }
+
+        query += ' GROUP BY ip_address, date ORDER BY date DESC'
 
         type AggregatedMetric = {
           ipAddress: string
