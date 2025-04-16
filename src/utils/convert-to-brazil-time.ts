@@ -10,6 +10,7 @@ dayjs.extend(timezone)
  * @param date - UTC date from database or any source
  * @returns dayjs.Dayjs instance in Brazilian timezone
  */
+
 export function convertToBrazilTime(date: Date | string) {
   return dayjs(date).tz('America/Sao_Paulo')
 }

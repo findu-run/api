@@ -69,6 +69,7 @@ export async function getIpMetrics(app: FastifyInstance) {
           .toDate()
 
         const isHourly = days === 1
+        console.time('getIpMetrics total')
 
         const logs = await prisma.queryLog.findMany({
           where: {
@@ -82,6 +83,14 @@ export async function getIpMetrics(app: FastifyInstance) {
             status: true,
           },
         })
+
+        console.timeEnd('getIpMetrics total')
+
+        console.time('aggregacao')
+        // loop que faz agrupamento em memória
+        console.timeEnd('aggregacao')
+
+        console.log(`Total de logs retornados: ${logs.length}`)
 
         const timeFormat = isHourly ? 'YYYY-MM-DD HH:00' : 'YYYY-MM-DD'
         const grouped = new Map<
