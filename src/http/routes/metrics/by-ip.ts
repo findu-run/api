@@ -92,7 +92,7 @@ export async function getIpMetrics(app: FastifyInstance) {
           COUNT(*) FILTER (WHERE status = 'SUCCESS')::INTEGER AS success,
           COUNT(*) FILTER (WHERE status != 'SUCCESS')::INTEGER AS failed
         FROM query_logs
-        WHERE organization_id = $3::uuid -- 👈 aqui está o cast
+        WHERE "organizationId" = $3
           AND created_at >= $4
           ${ip ? 'AND ip_address = $5' : ''}
         GROUP BY ip_address, DATE_TRUNC($1, created_at AT TIME ZONE 'UTC' AT TIME ZONE 'America/Sao_Paulo')
