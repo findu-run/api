@@ -83,21 +83,21 @@ export async function getIpMetrics(app: FastifyInstance) {
           }>
         >(
           `
-          SELECT
-            ip_address AS "ipAddress",
-            TO_CHAR(
-              DATE_TRUNC($1, created_at AT TIME ZONE 'UTC' AT TIME ZONE 'America/Sao_Paulo'),
-              $2
-            ) AS date,
-            COUNT(*) FILTER (WHERE status = 'SUCCESS')::INTEGER AS success,
-            COUNT(*) FILTER (WHERE status != 'SUCCESS')::INTEGER AS failed
-          FROM query_log
-          WHERE organization_id = $3
-            AND created_at >= $4
-            ${ip ? 'AND ip_address = $5' : ''}
-          GROUP BY ip_address, DATE_TRUNC($1, created_at AT TIME ZONE 'UTC' AT TIME ZONE 'America/Sao_Paulo')
-          ORDER BY date, ip_address
-          `,
+        SELECT
+          ip_address AS "ipAddress",
+          TO_CHAR(
+            DATE_TRUNC($1, created_at AT TIME ZONE 'UTC' AT TIME ZONE 'America/Sao_Paulo'),
+            $2
+          ) AS date,
+          COUNT(*) FILTER (WHERE status = 'SUCCESS')::INTEGER AS success,
+          COUNT(*) FILTER (WHERE status != 'SUCCESS')::INTEGER AS failed
+        FROM query_logs
+        WHERE organization_id = $3
+          AND created_at >= $4
+          ${ip ? 'AND ip_address = $5' : ''}
+        GROUP BY ip_address, DATE_TRUNC($1, created_at AT TIME ZONE 'UTC' AT TIME ZONE 'America/Sao_Paulo')
+        ORDER BY date, ip_address
+        `,
           interval,
           isHourly ? 'YYYY-MM-DD HH24:00' : 'YYYY-MM-DD',
           organization.id,
