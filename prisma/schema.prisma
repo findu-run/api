@@ -226,8 +226,8 @@ model Plan {
 
 model QueryLog {
   id             String   @id @default(uuid())
-  organizationId String   @map("ip_address")
-  ipAddress      String
+  organizationId String
+  ipAddress      String   @map("ip_address")
   status         String // ✅ Mantém o status da consulta (sucesso/falha)
   queryType      String // ✅ Novo campo para armazenar o tipo de consulta (CPF, CNPJ, etc.)
   createdAt      DateTime @default(now()) @map("created_at")
