@@ -1,9 +1,8 @@
 import type { FastifyInstance } from 'fastify'
 import type { ZodTypeProvider } from 'fastify-type-provider-zod'
 import { z } from 'zod'
-
-import { auth } from '@/http/middlewares/auth'
 import { prisma } from '@/lib/prisma'
+import { auth } from '@/http/middlewares/auth'
 import { ensureIsAdminOrOwner } from '@/utils/permissions'
 import { NotFoundError } from '@/http/_errors/not-found-error'
 import { convertToBrazilTime } from '@/utils/convert-to-brazil-time'
@@ -38,7 +37,7 @@ export async function getIpMetrics(app: FastifyInstance) {
               ),
               meta: z.object({
                 totalExecutionTimeMs: z.number(),
-                aggregationTimeMs: z.number(),
+                queryTimeMs: z.number(),
                 logCount: z.number(),
               }),
             }),
@@ -71,67 +70,59 @@ export async function getIpMetrics(app: FastifyInstance) {
         // Medir tempo total
         const totalStart = process.hrtime()
 
-        const logs = await prisma.queryLog.findMany({
-          where: {
-            organizationId: organization.id,
-            createdAt: { gte: startDate },
-            ...(ip ? { ipAddress: ip } : {}),
-          },
-          select: {
-            ipAddress: true,
-            createdAt: true,
-            status: true,
-          },
-        })
+        // Definir o intervalo de truncamento
+        const interval = isHourly ? 'hour' : 'day'
 
-        // Medir tempo de agregação
-        const aggregationStart = process.hrtime()
+        // Query SQL para agregar os dados
+        const logs = await prisma.$queryRawUnsafe<
+          Array<{
+            ipAddress: string
+            date: string
+            success: number
+            failed: number
+          }>
+        >(
+          `
+          SELECT
+            ip_address AS "ipAddress",
+            TO_CHAR(
+              DATE_TRUNC($1, created_at AT TIME ZONE 'UTC' AT TIME ZONE 'America/Sao_Paulo'),
+              $2
+            ) AS date,
+            COUNT(*) FILTER (WHERE status = 'SUCCESS')::INTEGER AS success,
+            COUNT(*) FILTER (WHERE status != 'SUCCESS')::INTEGER AS failed
+          FROM query_log
+          WHERE organization_id = $3
+            AND created_at >= $4
+            ${ip ? 'AND ip_address = $5' : ''}
+          GROUP BY ip_address, DATE_TRUNC($1, created_at AT TIME ZONE 'UTC' AT TIME ZONE 'America/Sao_Paulo')
+          ORDER BY date, ip_address
+          `,
+          interval,
+          isHourly ? 'YYYY-MM-DD HH24:00' : 'YYYY-MM-DD',
+          organization.id,
+          startDate,
+          ...(ip ? [ip] : []),
+        )
 
-        const timeFormat = isHourly ? 'YYYY-MM-DD HH:00' : 'YYYY-MM-DD'
-        const grouped = new Map<
-          string,
-          { ipAddress: string; date: string; success: number; failed: number }
-        >()
-
-        for (const log of logs) {
-          const date = convertToBrazilTime(log.createdAt).format(timeFormat)
-
-          const key = `${log.ipAddress}-${date}`
-
-          if (!grouped.has(key)) {
-            grouped.set(key, {
-              ipAddress: log.ipAddress,
-              date,
-              success: 0,
-              failed: 0,
-            })
-          }
-
-          const entry = grouped.get(key)!
-          if (log.status === 'SUCCESS') {
-            entry.success += 1
-          } else {
-            entry.failed += 1
-          }
-        }
-
-        const aggregationEnd = process.hrtime(aggregationStart)
-        const totalEnd = process.hrtime(totalStart)
+        const queryEnd = process.hrtime(totalStart)
 
         // Calcular tempos em milissegundos
-        const aggregationTimeMs =
-          aggregationEnd[0] * 1000 + aggregationEnd[1] / 1_000_000
-        const totalExecutionTimeMs =
-          totalEnd[0] * 1000 + totalEnd[1] / 1_000_000
+        const queryTimeMs = queryEnd[0] * 1000 + queryEnd[1] / 1_000_000
+        const totalExecutionTimeMs = queryTimeMs
 
-        console.log(`Total de logs retornados: ${logs.length}`)
+        // Contar o número total de logs
+        const logCount = logs.reduce(
+          (acc, log) => acc + log.success + log.failed,
+          0,
+        )
 
         return {
-          data: Array.from(grouped.values()),
+          data: logs,
           meta: {
             totalExecutionTimeMs,
-            aggregationTimeMs,
-            logCount: logs.length,
+            queryTimeMs,
+            logCount,
           },
         }
       },
