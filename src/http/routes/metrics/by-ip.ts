@@ -1,19 +1,12 @@
 import type { FastifyInstance } from 'fastify'
 import type { ZodTypeProvider } from 'fastify-type-provider-zod'
 import { z } from 'zod'
-import dayjs from 'dayjs'
-import utc from 'dayjs/plugin/utc'
-import timezone from 'dayjs/plugin/timezone'
 
 import { auth } from '@/http/middlewares/auth'
 import { prisma } from '@/lib/prisma'
 import { ensureIsAdminOrOwner } from '@/utils/permissions'
 import { NotFoundError } from '@/http/_errors/not-found-error'
 import { convertToBrazilTime } from '@/utils/convert-to-brazil-time'
-
-// Extende os plugins do dayjs
-dayjs.extend(utc)
-dayjs.extend(timezone)
 
 export async function getIpMetrics(app: FastifyInstance) {
   app
@@ -43,6 +36,11 @@ export async function getIpMetrics(app: FastifyInstance) {
                   failed: z.number(),
                 }),
               ),
+              meta: z.object({
+                totalExecutionTimeMs: z.number(),
+                aggregationTimeMs: z.number(),
+                logCount: z.number(),
+              }),
             }),
           },
         },
@@ -69,7 +67,9 @@ export async function getIpMetrics(app: FastifyInstance) {
           .toDate()
 
         const isHourly = days === 1
-        console.time('getIpMetrics total')
+
+        // Medir tempo total
+        const totalStart = process.hrtime()
 
         const logs = await prisma.queryLog.findMany({
           where: {
@@ -84,13 +84,8 @@ export async function getIpMetrics(app: FastifyInstance) {
           },
         })
 
-        console.timeEnd('getIpMetrics total')
-
-        console.time('aggregacao')
-        // loop que faz agrupamento em memória
-        console.timeEnd('aggregacao')
-
-        console.log(`Total de logs retornados: ${logs.length}`)
+        // Medir tempo de agregação
+        const aggregationStart = process.hrtime()
 
         const timeFormat = isHourly ? 'YYYY-MM-DD HH:00' : 'YYYY-MM-DD'
         const grouped = new Map<
@@ -120,8 +115,24 @@ export async function getIpMetrics(app: FastifyInstance) {
           }
         }
 
+        const aggregationEnd = process.hrtime(aggregationStart)
+        const totalEnd = process.hrtime(totalStart)
+
+        // Calcular tempos em milissegundos
+        const aggregationTimeMs =
+          aggregationEnd[0] * 1000 + aggregationEnd[1] / 1_000_000
+        const totalExecutionTimeMs =
+          totalEnd[0] * 1000 + totalEnd[1] / 1_000_000
+
+        console.log(`Total de logs retornados: ${logs.length}`)
+
         return {
           data: Array.from(grouped.values()),
+          meta: {
+            totalExecutionTimeMs,
+            aggregationTimeMs,
+            logCount: logs.length,
+          },
         }
       },
     )
