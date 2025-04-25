@@ -1,12 +1,11 @@
 import type { FastifyInstance } from 'fastify'
 import type { ZodTypeProvider } from 'fastify-type-provider-zod'
 import { z } from 'zod'
-import dayjs from 'dayjs'
-
-import { auth } from '@/http/middlewares/auth'
 import { prisma } from '@/lib/prisma'
+import { auth } from '@/http/middlewares/auth'
 import { ensureIsAdminOrOwner } from '@/utils/permissions'
 import { NotFoundError } from '@/http/_errors/not-found-error'
+import { convertToBrazilTime } from '@/utils/convert-to-brazil-time'
 
 export async function getOrganizationMetrics(app: FastifyInstance) {
   app
@@ -42,15 +41,22 @@ export async function getOrganizationMetrics(app: FastifyInstance) {
                   count: z.number(),
                 }),
               ),
+              meta: z.object({
+                totalExecutionTimeMs: z.number(),
+                queryTimeMs: z.number(),
+                logCount: z.number(),
+              }),
             }),
           },
         },
       },
       async (request) => {
+        const totalStart = process.hrtime()
+
         const { slug } = request.params
         const { days } = request.query
-
         const userId = await request.getCurrentUserId()
+
         const organization = await prisma.organization.findUnique({
           where: { slug },
         })
@@ -61,61 +67,73 @@ export async function getOrganizationMetrics(app: FastifyInstance) {
 
         await ensureIsAdminOrOwner(userId, organization.id)
 
-        const startDate = dayjs().subtract(days, 'days').startOf('day').toDate()
+        const startDate = convertToBrazilTime(new Date())
+          .subtract(days, 'days')
+          .startOf('day')
+          .toDate()
 
-        // ✅ Executa tudo em paralelo
-        const [
-          totalRequests,
-          successfulRequests,
-          requestsByType,
-          dailyRequestsRaw,
-        ] = await Promise.all([
-          prisma.queryLog.count({
-            where: {
-              organizationId: organization.id,
-              createdAt: { gte: startDate },
-            },
-          }),
-          prisma.queryLog.count({
-            where: {
-              organizationId: organization.id,
-              createdAt: { gte: startDate },
-              status: 'SUCCESS',
-            },
-          }),
-          prisma.queryLog.groupBy({
-            by: ['queryType'],
-            where: {
-              organizationId: organization.id,
-              createdAt: { gte: startDate },
-            },
-            _count: { id: true },
-          }),
-          prisma.queryLog.groupBy({
-            by: ['createdAt'],
-            where: {
-              organizationId: organization.id,
-              createdAt: { gte: startDate },
-            },
-            _count: { id: true },
-          }),
-        ])
+        const queryStart = process.hrtime()
 
-        // 📊 Formata agrupamento diário
-        const dailyRequests = dailyRequestsRaw.map((log) => ({
-          date: dayjs(log.createdAt).format('YYYY-MM-DD'),
-          count: log._count.id,
-        }))
+        const results = await prisma.$queryRawUnsafe<
+          Array<{
+            metric: string
+            value: number
+            extra?: string
+          }>
+        >(
+          `
+          SELECT 'total' AS metric, COUNT(*)::int AS value FROM query_logs
+          WHERE "organizationId" = $1 AND created_at >= $2
+          UNION ALL
+          SELECT 'success' AS metric, COUNT(*)::int FROM query_logs
+          WHERE "organizationId" = $1 AND created_at >= $2 AND status = 'SUCCESS'
+          UNION ALL
+          SELECT 'type' AS metric, COUNT(*)::int, query_type AS extra FROM query_logs
+          WHERE "organizationId" = $1 AND created_at >= $2
+          GROUP BY query_type
+          UNION ALL
+          SELECT 'daily' AS metric, COUNT(*)::int, TO_CHAR(DATE_TRUNC('day', created_at AT TIME ZONE 'UTC' AT TIME ZONE 'America/Sao_Paulo'), 'YYYY-MM-DD') AS extra
+          FROM query_logs
+          WHERE "organizationId" = $1 AND created_at >= $2
+          GROUP BY DATE_TRUNC('day', created_at AT TIME ZONE 'UTC' AT TIME ZONE 'America/Sao_Paulo')
+          ORDER BY metric, extra
+          `,
+          organization.id,
+          startDate,
+        )
+
+        const queryEnd = process.hrtime(queryStart)
+        const totalEnd = process.hrtime(totalStart)
+
+        const queryTimeMs = queryEnd[0] * 1000 + queryEnd[1] / 1_000_000
+        const totalExecutionTimeMs =
+          totalEnd[0] * 1000 + totalEnd[1] / 1_000_000
+
+        let total = 0
+        let success = 0
+        const requestsByType: { queryType: string; count: number }[] = []
+        const dailyRequests: { date: string; count: number }[] = []
+
+        for (const row of results) {
+          if (row.metric === 'total') total = row.value
+          else if (row.metric === 'success') success = row.value
+          else if (row.metric === 'type' && row.extra)
+            requestsByType.push({ queryType: row.extra, count: row.value })
+          else if (row.metric === 'daily' && row.extra)
+            dailyRequests.push({ date: row.extra, count: row.value })
+        }
 
         return {
-          totalRequests,
-          successfulRequests,
-          failedRequests: totalRequests - successfulRequests,
-          requestsByType: requestsByType.map((entry) => ({
-            queryType: entry.queryType,
-            count: entry._count.id,
-          })),
+          totalRequests: total,
+          successfulRequests: success,
+          failedRequests: total - success,
+          requestsByType,
           dailyRequests,
+          meta: {
+            totalExecutionTimeMs,
+            queryTimeMs,
+            logCount: total,
+          },
         }
       },
     )

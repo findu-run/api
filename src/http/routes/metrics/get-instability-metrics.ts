@@ -36,11 +36,18 @@ export async function getInstabilityMetrics(app: FastifyInstance) {
                   unstable: z.number(),
                 }),
               ),
+              meta: z.object({
+                totalExecutionTimeMs: z.number(),
+                queryTimeMs: z.number(),
+                eventCount: z.number(),
+              }),
             }),
           },
         },
       },
       async (request) => {
+        const totalStart = process.hrtime()
+
         const { slug } = request.params
         const { days, monitor } = request.query
 
@@ -62,10 +69,14 @@ export async function getInstabilityMetrics(app: FastifyInstance) {
           .toDate()
 
         const isHourly = days === 1
+        const timeFormat = isHourly ? 'YYYY-MM-DD HH:00' : 'YYYY-MM-DD'
+
+        const queryStart = process.hrtime()
 
         const events = await prisma.monitoringEvent.findMany({
           where: {
             detectedAt: { gte: startDate },
+            organizationId: organization.id,
             ...(monitor ? { name: monitor } : {}),
           },
           select: {
@@ -74,7 +85,13 @@ export async function getInstabilityMetrics(app: FastifyInstance) {
           },
         })
 
-        const timeFormat = isHourly ? 'YYYY-MM-DD HH:00' : 'YYYY-MM-DD'
+        const queryEnd = process.hrtime(queryStart)
+        const totalEnd = process.hrtime(totalStart)
+
+        const queryTimeMs = queryEnd[0] * 1000 + queryEnd[1] / 1_000_000
+        const totalExecutionTimeMs =
+          totalEnd[0] * 1000 + totalEnd[1] / 1_000_000
+
         const grouped = new Map<
           string,
           { date: string; up: number; down: number; unstable: number }
@@ -82,10 +99,9 @@ export async function getInstabilityMetrics(app: FastifyInstance) {
 
         for (const event of events) {
           const date = convertToBrazilTime(event.detectedAt).format(timeFormat)
-          const key = date
 
-          if (!grouped.has(key)) {
-            grouped.set(key, {
+          if (!grouped.has(date)) {
+            grouped.set(date, {
               date,
               up: 0,
               down: 0,
@@ -93,18 +109,20 @@ export async function getInstabilityMetrics(app: FastifyInstance) {
             })
           }
 
-          const entry = grouped.get(key)!
-          if (event.status === 0) {
-            entry.down += 1
-          } else if (event.status === 1) {
-            entry.up += 1
-          } else if (event.status === 2) {
-            entry.unstable += 1
-          }
+          const entry = grouped.get(date)!
+
+          if (event.status === 0) entry.down += 1
+          else if (event.status === 1) entry.up += 1
+          else if (event.status === 2) entry.unstable += 1
         }
 
         return {
           data: Array.from(grouped.values()),
+          meta: {
+            totalExecutionTimeMs,
+            queryTimeMs,
+            eventCount: events.length,
+          },
         }
       },
     )
