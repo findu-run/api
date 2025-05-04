@@ -71,7 +71,10 @@ export const app = fastify().withTypeProvider<ZodTypeProvider>()
 
 app.register(fastifyRawBody, { field: 'rawBody', runFirst: true })
 
-app.register(fastifyCors)
+app.register(fastifyCors, {
+  origin: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+})
 
 app.register(fastifyJwt, {
   secret: env.JWT_SECRET,

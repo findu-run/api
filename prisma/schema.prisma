@@ -119,12 +119,17 @@ model Subscription {
   planId           String
   status           SubscriptionStatus
   currentPeriodEnd DateTime
-  createdAt        DateTime           @default(now()) @map("created_at")
-  updatedAt        DateTime           @updatedAt @map("updated_at")
   startedAt        DateTime           @default(now())
-  Invoice          Invoice[]
-  organization     Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  plan             Plan               @relation(fields: [planId], references: [id])
+
+  // paidUntil        DateTime           @map("paid_until")
+  // externalPaymentId String?            @map("external_payment_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  Invoice Invoice[]
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  plan         Plan         @relation(fields: [planId], references: [id])
 
   @@map("subscriptions")
 }
