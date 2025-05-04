@@ -8,84 +8,58 @@ datasource db {
 }
 
 model User {
-  id           String    @id @default(uuid())
-  name         String
-  email        String    @unique
-  passwordHash String?   @map("password_hash")
-  avatarUrl    String?   @map("avatar_url")
-  birthday     DateTime?
-  barkKey      String?   @map("bark_key")
-
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  tokens             Token[]
+  id                 String         @id @default(uuid())
+  email              String         @unique
+  passwordHash       String?        @map("password_hash")
+  avatarUrl          String?        @map("avatar_url")
+  birthday           DateTime?
+  createdAt          DateTime       @default(now()) @map("created_at")
+  updatedAt          DateTime       @updatedAt @map("updated_at")
+  name               String
+  barkKey            String?        @map("bark_key")
+  IpAddress          IpAddress[]
   accounts           Account[]
   invites            Invite[]
   member_on          Member[]
   owns_organizations Organization[]
-  IpAddress          IpAddress[]
+  tokens             Token[]
 
   @@map("users")
 }
 
-enum TokenType {
-  PASSWORD_RECOVER
-  BARK_CONNECT
-}
-
 model Token {
-  id        String    @id @default(uuid())
-  type      TokenType
-  createdAt DateTime  @default(now()) @map("created_at")
-
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId String @map("user_id")
-
-  // 🔥 Dados específicos para integração com o Bark
-  deviceToken String? @map("device_token")
-  deviceKey   String? @map("device_key")
-  key         String? @map("bark_key") // pode ser um identificador da sessão/aplicação
+  id          String    @id @default(uuid())
+  type        TokenType
+  createdAt   DateTime  @default(now()) @map("created_at")
+  userId      String    @map("user_id")
+  key         String?   @map("bark_key")
+  deviceKey   String?   @map("device_key")
+  deviceToken String?   @map("device_token")
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("tokens")
-}
-
-enum AccountProvider {
-  GITHUB
-  GOOGLE
 }
 
 model Account {
   id                String          @id @default(uuid())
   provider          AccountProvider
   providerAccountId String          @unique @map("provider_account_id")
-
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId String @map("user_id")
+  userId            String          @map("user_id")
+  user              User            @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, userId])
   @@map("accounts")
 }
 
-enum Role {
-  OWNER
-  ADMIN
-  MEMBER
-  CUSTOMER
-  BILLING
-}
-
 model Invite {
-  id        String   @id @default(uuid())
-  email     String
-  role      Role
-  createdAt DateTime @default(now()) @map("created_at")
-
-  author   User?   @relation(fields: [authorId], references: [id], onDelete: SetNull)
-  authorId String? @map("author_id")
-
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  id             String       @id @default(uuid())
+  email          String
+  role           Role
+  createdAt      DateTime     @default(now()) @map("created_at")
+  authorId       String?      @map("author_id")
   organizationId String       @map("organization_id")
+  author         User?        @relation(fields: [authorId], references: [id])
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@unique([email, organizationId])
   @@index([email])
@@ -93,87 +67,64 @@ model Invite {
 }
 
 model Organization {
-  id                        String  @id @default(uuid())
+  id                        String        @id @default(uuid())
   name                      String
-  slug                      String  @unique
-  domain                    String? @unique
-  shouldAttachUsersByDomain Boolean @default(false)
-
-  owner   User   @relation(fields: [ownerId], references: [id])
-  ownerId String
-
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  members      Member[]
-  subscription Subscription? // 🔥 A organização tem uma assinatura ativa
-  ipAddress    IpAddress[]
-  addons       Addon[] // 🔥 Recursos extras comprados pela organização
-  Invite       Invite[]
-  QueryLog     QueryLog[]
-  Invoice      Invoice[]
+  slug                      String        @unique
+  domain                    String?       @unique
+  shouldAttachUsersByDomain Boolean       @default(false)
+  ownerId                   String
+  createdAt                 DateTime      @default(now()) @map("created_at")
+  updatedAt                 DateTime      @updatedAt @map("updated_at")
+  Invoice                   Invoice[]
+  ipAddress                 IpAddress[]
+  addons                    Addon[]
+  Invite                    Invite[]
+  members                   Member[]
+  owner                     User          @relation(fields: [ownerId], references: [id])
+  QueryLog                  QueryLog[]
+  subscription              Subscription?
 
   @@index([slug])
   @@map("organizations")
 }
 
 model IpAddress {
-  id             String @id @default(uuid())
-  ip             String
+  id             String       @id @default(uuid())
   organizationId String
-
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  author   User?   @relation(fields: [authorId], references: [id], onDelete: SetNull)
-  authorId String? @map("author_id")
-
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  ip             String
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+  authorId       String?      @map("author_id")
+  author         User?        @relation(fields: [authorId], references: [id])
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@index([updatedAt])
 }
 
 model Member {
-  id   String @id @default(uuid())
-  role Role   @default(MEMBER)
-
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  id             String       @id @default(uuid())
+  role           Role         @default(MEMBER)
   organizationId String       @map("organization_id")
-
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId String @map("user_id")
+  userId         String       @map("user_id")
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([organizationId, userId])
   @@map("members")
 }
 
-enum SubscriptionStatus {
-  ACTIVE
-  TRIALING
-  CANCELED
-}
-
-enum PlanTier {
-  BASIC // Plano básico
-  PROFESSIONAL // Plano profissional
-  BUSINESS // Plano Business
-  TRIAL // Trial (7 dias grátis, apenas para Basic)
-}
-
 model Subscription {
   id               String             @id @default(uuid())
   organizationId   String             @unique
-  planId           String // 🔥 Define o plano da assinatura
+  planId           String
   status           SubscriptionStatus
-  startedAt        DateTime           @default(now()) // 🔥 Data de início da assinatura
-  currentPeriodEnd DateTime // 🔥 Data de vencimento da assinatura
-
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  plan         Plan         @relation(fields: [planId], references: [id])
-  Invoice      Invoice[]
+  currentPeriodEnd DateTime
+  createdAt        DateTime           @default(now()) @map("created_at")
+  updatedAt        DateTime           @updatedAt @map("updated_at")
+  startedAt        DateTime           @default(now())
+  Invoice          Invoice[]
+  organization     Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  plan             Plan               @relation(fields: [planId], references: [id])
 
   @@map("subscriptions")
 }
@@ -181,58 +132,45 @@ model Subscription {
 model Invoice {
   id             String        @id @default(uuid())
   organizationId String
-  subscriptionId String? // Tornando opcional
-  amount         Int // Valor total da fatura em centavos
+  subscriptionId String?
+  amount         Int
   status         InvoiceStatus
-  dueDate        DateTime // Data de vencimento
-  paidAt         DateTime? // Data de pagamento, se foi pago
+  dueDate        DateTime
+  paidAt         DateTime?
+  createdAt      DateTime      @default(now()) @map("created_at")
   paymentUrl     String?       @map("payment_url")
   paymentId      String?
-
-  createdAt DateTime @default(now()) @map("created_at")
-
-  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  subscription Subscription? @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
-}
-
-enum InvoiceStatus {
-  PENDING
-  PAID
-  OVERDUE
-  CANCELED
+  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  subscription   Subscription? @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
 }
 
 model Plan {
-  id               String   @id @default(uuid())
+  id               String         @id @default(uuid())
   name             String
-  price            Int // Em centavos (ex: R$ 10,00 => 1000)
+  price            Int
   description      String?
-  type             PlanTier @unique
-  isTrialAvailable Boolean  @default(false) // 🔥 Define se o plano tem trial
-
-  maxOrganizations Int // Quantidade máxima de organizações no plano
-  maxIps           Int // 🔥 Limite de IPs para esse plano
-  maxRequests      Int // 🔥 Limite de requisições por mês
-  ipChangeLimit    Int // 🔥 Tempo mínimo para troca de IP (em horas)
-  supportLevel     String // 🔥 Suporte disponível nesse plano (E-mail, WhatsApp, Prioritário)
-
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  subscriptions Subscription[]
+  maxOrganizations Int
+  maxIps           Int
+  maxRequests      Int
+  ipChangeLimit    Int
+  supportLevel     String
+  createdAt        DateTime       @default(now()) @map("created_at")
+  updatedAt        DateTime       @updatedAt @map("updated_at")
+  type             PlanTier       @unique
+  isTrialAvailable Boolean        @default(false)
+  subscriptions    Subscription[]
 
   @@map("plans")
 }
 
 model QueryLog {
-  id             String   @id @default(uuid())
+  id             String       @id @default(uuid())
   organizationId String
-  ipAddress      String?  @map("ip_address")
-  status         String // ✅ Mantém o status da consulta (sucesso/falha)
-  queryType      String // ✅ Novo campo para armazenar o tipo de consulta (CPF, CNPJ, etc.)
-  createdAt      DateTime @default(now()) @map("created_at")
-
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  ipAddress      String?      @map("ip_address")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  queryType      String
+  status         String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@index([createdAt])
   @@map("query_logs")
@@ -252,17 +190,53 @@ model MonitoringEvent {
 }
 
 model Addon {
-  id             String    @id @default(uuid())
+  id             String       @id @default(uuid())
   organizationId String
   type           AddonType
   amount         Int
   price          Int
-
-  createdAt DateTime @default(now()) @map("created_at")
-
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdAt      DateTime     @default(now()) @map("created_at")
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@map("addons")
+}
+
+enum TokenType {
+  PASSWORD_RECOVER
+  BARK_CONNECT
+}
+
+enum AccountProvider {
+  GITHUB
+  GOOGLE
+}
+
+enum Role {
+  OWNER
+  ADMIN
+  MEMBER
+  CUSTOMER
+  BILLING
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  TRIALING
+  CANCELED
+}
+
+enum PlanTier {
+  BASIC
+  PROFESSIONAL
+  BUSINESS
+  TRIAL
+}
+
+enum InvoiceStatus {
+  PENDING
+  PAID
+  OVERDUE
+  CANCELED
 }
 
 enum AddonType {
