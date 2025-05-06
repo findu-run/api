@@ -26,8 +26,10 @@ export async function getOrganizationIps(app: FastifyInstance) {
             200: z.object({
               ips: z.array(
                 z.object({
+                  name: z.string().nullable(),
                   id: z.string().uuid(),
                   ip: z.string(),
+                  authorId: z.string().nullable(),
                   createdAt: z.string(),
                   updatedAt: z.string(),
                 }),
@@ -65,11 +67,13 @@ export async function getOrganizationIps(app: FastifyInstance) {
         const formattedIps = ips.map((ip) => ({
           id: ip.id,
           ip: ip.ip,
+          name: ip.name ?? null,
+          authorId: ip.authorId,
           createdAt: convertToBrazilTime(ip.createdAt).toISOString(),
           updatedAt: convertToBrazilTime(ip.updatedAt).toISOString(),
         }))
 
-        return { ips: formattedIps }
+        return reply.status(200).send({ ips: formattedIps })
       },
     )
 }

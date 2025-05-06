@@ -90,6 +90,7 @@ model Organization {
 
 model IpAddress {
   id             String       @id @default(uuid())
+  name           String?
   organizationId String
   ip             String
   createdAt      DateTime     @default(now()) @map("created_at")

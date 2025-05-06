@@ -22,6 +22,7 @@ export async function addIpAddress(app: FastifyInstance) {
             slug: z.string(),
           }),
           body: z.object({
+            name: z.string().nullable(),
             ip: z
               .string()
               .regex(/^(?:\d{1,3}\.){3}\d{1,3}$/, 'Invalid IPv4 format'),
@@ -30,13 +31,14 @@ export async function addIpAddress(app: FastifyInstance) {
             201: z.object({
               ipId: z.string().uuid(),
               ip: z.string(),
+              authorId: z.string().nullable(),
             }),
           },
         },
       },
       async (request, reply) => {
         const { slug } = request.params
-        const { ip } = request.body
+        const { ip, name } = request.body
         const userId = await request.getCurrentUserId()
 
         const organization = await prisma.organization.findUnique({
@@ -95,12 +97,15 @@ export async function addIpAddress(app: FastifyInstance) {
           data: {
             organizationId: organization.id,
             ip,
+            name,
+            authorId: userId,
           },
         })
 
         return reply.status(201).send({
           ipId: newIp.id,
           ip: newIp.ip,
+          authorId: newIp.authorId,
         })
       },
     )
