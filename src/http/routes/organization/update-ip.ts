@@ -25,26 +25,26 @@ export async function updateIpAddress(app: FastifyInstance) {
             ipId: z.string().uuid(),
           }),
           body: z.object({
-            newIp: z.string().regex(
-              /^(?:\d{1,3}\.){3}\d{1,3}$/,
-              'Invalid IPv4 format',
-            ),
+            newIp: z
+              .string()
+              .regex(/^(?:\d{1,3}\.){3}\d{1,3}$/, 'Invalid IPv4 format'),
+            name: z.string().nullable().optional(), // ✅ Adicionado
           }),
           response: {
             200: z.object({
               ipId: z.string().uuid(),
               oldIp: z.string(),
               newIp: z.string(),
+              name: z.string().nullable().optional(), // ✅ Adicionado na resposta
             }),
           },
         },
       },
       async (request, reply) => {
         const { slug, ipId } = request.params
-        const { newIp } = request.body
+        const { newIp, name } = request.body
         const userId = await request.getCurrentUserId()
 
-        // 🔥 Buscar a organização e garantir que o usuário seja OWNER
         const organization = await prisma.organization.findUnique({
           where: { slug },
           select: {
@@ -53,57 +53,48 @@ export async function updateIpAddress(app: FastifyInstance) {
             subscription: {
               select: {
                 status: true,
-                plan: {
-                  select: {
-                    ipChangeLimit: true, // 🔥 Tempo mínimo para troca de IP em horas
-                  },
-                },
+                plan: { select: { ipChangeLimit: true } },
               },
             },
             addons: {
-              where: { type: 'EARLY_IP_CHANGE' }, // 🔥 Obtém Addons de Troca de IP
+              where: { type: 'EARLY_IP_CHANGE' },
               select: { id: true, amount: true },
             },
           },
         })
 
-        if (!organization) {
-          throw new NotFoundError('Organization not found.')
-        }
-
-        // 🔥 Verifica se o usuário é o OWNER
+        if (!organization) throw new NotFoundError('Organization not found.')
         await ensureIsOwner(userId, organization.id)
 
-        // 🔥 Verifica se a organização tem um plano ativo
-        if (!organization.subscription || organization.subscription.status !== 'ACTIVE') {
-          throw new BadRequestError('Organization does not have an active subscription.')
+        if (
+          !organization.subscription ||
+          organization.subscription.status !== 'ACTIVE'
+        ) {
+          throw new BadRequestError(
+            'Organization does not have an active subscription.',
+          )
         }
 
-        // 🔥 Buscar o IP atual
         const ipRecord = await prisma.ipAddress.findUnique({
           where: { id: ipId },
         })
 
         if (!ipRecord || ipRecord.organizationId !== organization.id) {
-          throw new NotFoundError('IP address not found or does not belong to this organization.')
+          throw new NotFoundError(
+            'IP address not found or does not belong to this organization.',
+          )
         }
 
-        // 🔥 Verificar se o tempo mínimo entre trocas já passou
         const lastIpChangeTime = dayjs(ipRecord.updatedAt)
         const minTimeToChange = organization.subscription.plan.ipChangeLimit
         const nextAllowedChange = lastIpChangeTime.add(minTimeToChange, 'hour')
 
         if (dayjs().isBefore(nextAllowedChange)) {
-          // 🔥 Se a organização tiver um Addon de Troca de IP, usa automaticamente
           if (organization.addons.length > 0) {
-            const usedAddon = organization.addons[0] // Usa o primeiro disponível
-
-            // 🔥 Remove um addon da organização
+            const usedAddon = organization.addons[0]
             await prisma.addon.update({
               where: { id: usedAddon.id },
-              data: {
-                amount: usedAddon.amount - 1,
-              },
+              data: { amount: usedAddon.amount - 1 },
             })
           } else {
             throw new BadRequestError(
@@ -114,11 +105,11 @@ export async function updateIpAddress(app: FastifyInstance) {
           }
         }
 
-        // 🔥 Atualiza o IP no banco de dados
         const updatedIp = await prisma.ipAddress.update({
           where: { id: ipId },
           data: {
             ip: newIp,
+            name: name ?? null, // ✅ Atualização do nome
             updatedAt: new Date(),
           },
         })
@@ -127,6 +118,7 @@ export async function updateIpAddress(app: FastifyInstance) {
           ipId: updatedIp.id,
           oldIp: ipRecord.ip,
           newIp: updatedIp.ip,
+          name: updatedIp.name,
         })
       },
     )
