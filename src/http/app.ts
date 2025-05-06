@@ -113,7 +113,7 @@ app.register(fastifySchedule)
 app.register(getJobsStatus)
 app.register(generateMonthlyInvoices)
 app.register(subscriptionsCheckSchedule)
-// app.register(logsCleanerSchedule)
+app.register(logsCleanerSchedule)
 
 app.register(healthChecker)
 app.register(sendFunnyOrCustomNotificationRoute)
