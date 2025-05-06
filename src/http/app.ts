@@ -66,6 +66,7 @@ import { getBillingSummary } from './routes/billing/get-billing-summary'
 import { sendFunnyOrCustomNotificationRoute } from './routes/notifications/custom'
 import { paymentWebhookRoute } from './routes/webhooks/payments/payments'
 import { getOrganizationSummary } from './routes/metrics/get-organization-summary'
+import { logsCleanerSchedule } from '@/schedules/jobs/logs-cleaner-job'
 
 export const app = fastify().withTypeProvider<ZodTypeProvider>()
 
@@ -113,7 +114,7 @@ app.register(fastifySchedule)
 app.register(getJobsStatus)
 app.register(generateMonthlyInvoices)
 app.register(subscriptionsCheckSchedule)
-// app.register(logsCleanerSchedule)
+app.register(logsCleanerSchedule)
 
 app.register(healthChecker)
 app.register(sendFunnyOrCustomNotificationRoute)

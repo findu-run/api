@@ -17,7 +17,7 @@ export async function logsCleanerSchedule(app: FastifyInstance) {
 
   const job = new CronJob(
     {
-      cronExpression: '0 4 * * *', // Todos os dias às 04:00 da manhã
+      cronExpression: '0 4 * * *', // Every day at 04:00 AM
       timezone: 'America/Sao_Paulo',
     },
     task,
