@@ -67,6 +67,7 @@ import { sendFunnyOrCustomNotificationRoute } from './routes/notifications/custo
 import { paymentWebhookRoute } from './routes/webhooks/payments/payments'
 import { getOrganizationSummary } from './routes/metrics/get-organization-summary'
 import { logsCleanerSchedule } from '@/schedules/jobs/logs-cleaner-job'
+import { metricsInternalCPF } from './routes/metrics/internal-cpf-metrics'
 
 export const app = fastify().withTypeProvider<ZodTypeProvider>()
 
@@ -152,6 +153,7 @@ app.register(getOrganizationMetrics)
 app.register(getIpMetrics)
 app.register(getInstabilityMetrics)
 app.register(getOrganizationSummary)
+app.register(metricsInternalCPF)
 
 app.register(cancelSubscription)
 app.register(generatePaymentLink)
