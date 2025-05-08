@@ -1,4 +1,4 @@
-// Arquivo: src/http/external/cpf.ts (Modificado com Balanceamento, Failover e Métricas)
+// Arquivo: src/http/external/cpf.ts (Modificado com todas as correções)
 import { env } from '@/env'
 import axios, { AxiosError } from 'axios'
 import { BadRequestError } from '../_errors/bad-request-error'
@@ -96,15 +96,25 @@ async function executeApiCall(
   cpf: string,
 ): Promise<CpfDataResponse> {
   const startTime = Date.now()
-  const apiUrl = apiConfig.getUrl()
+  let apiUrl = apiConfig.getUrl() // Use let para permitir modificação
 
   if (!apiUrl) {
     throw new Error(`URL for API ${apiConfig.name} is not configured.`)
   }
 
+  // Modificação para adicionar o parâmetro cpf corretamente
+  if (apiUrl.includes('?')) {
+    apiUrl = `${apiUrl}&cpf=${cpf}`
+  } else {
+    apiUrl = `${apiUrl}?cpf=${cpf}`
+  }
+
   try {
-    const response = await axios.get(`${apiUrl}?cpf=${cpf}`, {
-      timeout: 5000,
+    // console.log(`[CPF Service] Attempting API: ${apiConfig.name} with final URL: ${apiUrl}`); // Log para depuração
+    const response = await axios.get(apiUrl, {
+      // Usa a apiUrl modificada
+      timeout: 5000, // Timeout de 5 segundos para a requisição
+      // headers: { Authorization: `Bearer ${apiConfig.getApiKey()}` } // Exemplo se API Key for necessária
     })
     const latency = Date.now() - startTime
     updateMetrics(apiConfig.name, true, latency)
@@ -136,30 +146,30 @@ async function executeApiCall(
       console.warn(
         `[CPF Service] API ${apiConfig.name} marked as UNHEALTHY after ${apiConfig.consecutiveFails} consecutive failures. Error: ${error instanceof Error ? error.message : JSON.stringify(error)}`,
       )
+      // Inicia cooldown para tentar reativar a API
       setTimeout(() => {
         apiConfig.healthy = true
-        apiConfig.consecutiveFails = 0
+        apiConfig.consecutiveFails = 0 // Reseta contador para permitir nova tentativa
         console.log(
           `[CPF Service] API ${apiConfig.name} cooldown finished. Marked as HEALTHY for next attempt.`,
         )
       }, API_UNHEALTHY_COOLDOWN_MS)
     }
-    throw error
+    throw error // Re-lançar para que a lógica de failover possa tratar
   }
 }
+
 export async function fetchCPFData(cpf: string): Promise<CpfDataResponse> {
   const availableApis = apiConfigs.filter((api) => api.healthy && api.getUrl())
 
   if (availableApis.length === 0) {
-    // Nenhuma API saudável, tentar a primária como último recurso se configurada, mesmo que marcada como unhealthy (após cooldown)
     const primaryApi = apiConfigs.find((api) => api.name === 'primary')
     if (primaryApi && primaryApi.getUrl()) {
       console.warn(
         '[CPF Service] All APIs were unhealthy or unconfigured. Attempting to use primary API as a last resort.',
       )
-      // Força a tentativa na primária, mesmo que o health check automático não a tenha reativado ainda
       if (!primaryApi.healthy) {
-        primaryApi.healthy = true // Tenta forçar a reativação para esta chamada
+        primaryApi.healthy = true
         primaryApi.consecutiveFails = 0
       }
       try {
@@ -182,16 +192,12 @@ export async function fetchCPFData(cpf: string): Promise<CpfDataResponse> {
     }
   }
 
-  // Lógica de Round Robin sobre APIs saudáveis
   const initialIndex = nextApiIndex % availableApis.length
   for (let i = 0; i < availableApis.length; i++) {
     const currentIndex = (initialIndex + i) % availableApis.length
     const selectedApi = availableApis[currentIndex]
 
-    // Atualiza o nextApiIndex global para a próxima chamada, considerando apenas as APIs disponíveis no momento da chamada.
-    // Isso garante que, se uma API ficar indisponível, o round-robin continue corretamente entre as restantes.
     if (i === 0) {
-      // Atualiza o nextApiIndex global apenas na primeira tentativa desta chamada fetchCPFData
       nextApiIndex =
         (apiConfigs.findIndex((api) => api.name === selectedApi.name) + 1) %
         apiConfigs.length
@@ -204,13 +210,11 @@ export async function fetchCPFData(cpf: string): Promise<CpfDataResponse> {
         `[CPF Service] API ${selectedApi.name} failed for CPF ${cpf}. Error: ${error instanceof Error ? error.message : 'Unknown error'}`,
       )
       if (i < availableApis.length - 1) {
-        // Se não for a última API saudável tentada
         await new Promise((resolve) => setTimeout(resolve, API_RETRY_DELAY_MS))
       }
     }
   }
 
-  // Se todas as APIs saudáveis falharam nesta tentativa
   console.error(
     '[CPF Service] Failed to fetch CPF data from all available sources after retries.',
   )
@@ -219,9 +223,8 @@ export async function fetchCPFData(cpf: string): Promise<CpfDataResponse> {
   )
 }
 
-// Função para obter métricas formatadas (pode ser usada por uma rota)
 export function getCpfApiMetrics() {
-  const metricsCopy = JSON.parse(JSON.stringify(apiMetrics)) // Deep copy
+  const metricsCopy = JSON.parse(JSON.stringify(apiMetrics))
   for (const key of ['primary', 'secondary', 'overall'] as const) {
     if (metricsCopy[key].requests_successful > 0) {
       metricsCopy[key].average_response_time_ms = Number.parseFloat(
