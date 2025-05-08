@@ -15,6 +15,7 @@ const envSchemas = z.object({
   GITHUB_OAUTH_CLIENT_REDIRECT_URI: z.string(),
   AES_ENCRYPTION_KEY: z.string(),
   API_CONSULT: z.string(),
+  API_CPF_SECONDARY_URL: z.string(),
   BARK_SERVER_URL: z.string(),
   APPRISE_URL: z.string(),
   NOTIFY_URL_BARK: z.string(),
