@@ -103,10 +103,8 @@ async function executeApiCall(
   }
 
   try {
-    // console.log(`[CPF Service] Attempting API: ${apiConfig.name} with URL: ${apiUrl}`);
     const response = await axios.get(`${apiUrl}?cpf=${cpf}`, {
-      timeout: 5000, // Timeout de 5 segundos para a requisição
-      // headers: { Authorization: `Bearer ${apiConfig.getApiKey()}` } // Exemplo se API Key for necessária
+      timeout: 5000,
     })
     const latency = Date.now() - startTime
     updateMetrics(apiConfig.name, true, latency)
@@ -115,12 +113,15 @@ async function executeApiCall(
       console.log(`[CPF Service] API ${apiConfig.name} is now HEALTHY.`)
       apiConfig.healthy = true
     }
+
+    // Ajuste para lidar com diferentes capitalizações de campos
+    const responseData = response.data
     return {
-      cpf: response.data.CPF,
-      name: response.data.NOME,
-      birthDate: response.data.NASCIMENTO,
-      motherName: response.data.MAE,
-      gender: response.data.SEXO,
+      cpf: responseData.CPF || responseData.cpf, // Tenta CPF, depois cpf
+      name: responseData.NOME || responseData.nome,
+      birthDate: responseData.NASCIMENTO || responseData.nascimento,
+      motherName: responseData.MAE || responseData.mae,
+      gender: responseData.SEXO || responseData.sexo,
       sourceApi: apiConfig.name,
     }
   } catch (error) {
@@ -135,19 +136,17 @@ async function executeApiCall(
       console.warn(
         `[CPF Service] API ${apiConfig.name} marked as UNHEALTHY after ${apiConfig.consecutiveFails} consecutive failures. Error: ${error instanceof Error ? error.message : JSON.stringify(error)}`,
       )
-      // Inicia cooldown para tentar reativar a API
       setTimeout(() => {
         apiConfig.healthy = true
-        apiConfig.consecutiveFails = 0 // Reseta contador para permitir nova tentativa
+        apiConfig.consecutiveFails = 0
         console.log(
           `[CPF Service] API ${apiConfig.name} cooldown finished. Marked as HEALTHY for next attempt.`,
         )
       }, API_UNHEALTHY_COOLDOWN_MS)
     }
-    throw error // Re-lançar para que a lógica de failover possa tratar
+    throw error
   }
 }
-
 export async function fetchCPFData(cpf: string): Promise<CpfDataResponse> {
   const availableApis = apiConfigs.filter((api) => api.healthy && api.getUrl())
 
