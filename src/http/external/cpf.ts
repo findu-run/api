@@ -11,7 +11,7 @@ export interface CpfDataResponse {
   gender: string
 }
 
-export async function fetchCPFData(cpf: string): Promise<CpfDataResponse> {
+export async function getCpfApiMetrics(cpf: string): Promise<CpfDataResponse> {
   try {
     await delay(2000)
     const response = await axios.get(`${env.API_CONSULT}?cpf=${cpf}`)
