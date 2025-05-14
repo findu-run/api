@@ -65,6 +65,7 @@ import { paymentWebhookRoute } from './routes/webhooks/payments/payments'
 import { getOrganizationSummary } from './routes/metrics/get-organization-summary'
 import { logsCleanerSchedule } from '@/schedules/jobs/logs-cleaner-job'
 import { metricsInternalCPF } from './routes/metrics/internal-cpf-metrics'
+import fastifyRateLimit from '@fastify/rate-limit'
 
 export const app = fastify().withTypeProvider<ZodTypeProvider>()
 
@@ -100,6 +101,19 @@ app.register(fastifySwagger, {
 
 app.register(fastifySwaggerUi, {
   routePrefix: '/docs',
+})
+
+app.register(fastifyRateLimit, {
+  max: 1000, // Limite alto para permitir tráfego legítimo intenso
+  timeWindow: '1 minute',
+  // Opcionalmente, adicionar uma mensagem personalizada quando o limite for atingido
+  errorResponseBuilder: (_request, context) => ({
+    code: 429,
+    error: 'Too Many Requests',
+    message: `Rate limit excedido. Por favor, tente novamente em ${context.after}.`,
+    date: Date.now(),
+    expiresIn: context.after,
+  }),
 })
 
 app.setSerializerCompiler(serializerCompiler)

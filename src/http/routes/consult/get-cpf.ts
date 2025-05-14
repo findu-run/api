@@ -1,4 +1,4 @@
-import type { FastifyInstance } from 'fastify'
+import type { FastifyInstance, FastifyRequest } from 'fastify'
 import { z } from 'zod'
 import type { ZodTypeProvider } from 'fastify-type-provider-zod'
 
@@ -14,12 +14,22 @@ export async function getCPF(app: FastifyInstance) {
   app.withTypeProvider<ZodTypeProvider>().get(
     '/organizations/:slug/cpf',
     {
+      config: {
+        // Coloque a configuração do rateLimit aqui dentro
+        rateLimit: {
+          keyGenerator: (
+            request: FastifyRequest<{ Params: { slug: string } }>,
+          ) => request.params.slug,
+          max: 5000, // Ou o valor que você decidiu testar
+          // timeWindow: '1 minute', // Opcional, pode herdar do global ou ser definido aqui
+        },
+      },
       schema: {
         tags: ['CPF'],
         summary: 'Consult CPF information',
         security: [{ bearerAuth: [] }],
         params: z.object({
-          slug: z.string(),
+          slug: z.string(), // Slug é obrigatório aqui
         }),
         querystring: z.object({
           cpf: z.string().regex(/^\d{11}$/, 'Invalid CPF format'),

@@ -174,11 +174,12 @@ model QueryLog {
   organizationId String
   ipAddress      String?      @map("ip_address")
   createdAt      DateTime     @default(now()) @map("created_at")
-  queryType      String
   status         String
+  queryType      String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
-  @@index([createdAt])
+  @@index([organizationId, createdAt]) // Índice composto para contagens
+  @@index([organizationId]) // Índice para otimizar joins e outras buscas por organizationId
   @@map("query_logs")
 }
 
