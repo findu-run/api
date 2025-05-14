@@ -53,10 +53,7 @@ import { registerBark } from './routes/integrations/notifications/bark/register'
 import { testNotificationRoute } from './routes/notifications/test'
 import { uptimeWebhook } from './routes/webhooks/uptime-webhook'
 import { testTrialFlow } from './routes/health/testTrialFlow'
-import { generateMonthlyInvoices } from '@/schedules/generate-monthly-invoices'
-import { subscriptionsCheckSchedule } from '@/schedules/subscriptions-check'
-import { getJobsStatus } from './routes/health/getJobsStatus'
-import { ToadScheduler, type CronJob } from 'toad-scheduler'
+import type { CronJob } from 'toad-scheduler'
 import { getInstabilityMetrics } from './routes/metrics/get-instability-metrics'
 import { getBarkConnectionStatus } from './routes/integrations/notifications/bark/get-bark-connection-status'
 import { getOrganizationIps } from './routes/organization/get-organization-ips'
@@ -112,9 +109,9 @@ app.setErrorHandler(errorHandler)
 app.jobsMap = new Map<string, CronJob>()
 
 app.register(fastifySchedule)
-app.register(getJobsStatus)
-app.register(generateMonthlyInvoices)
-app.register(subscriptionsCheckSchedule)
+// app.register(getJobsStatus)
+// app.register(generateMonthlyInvoices)
+// app.register(subscriptionsCheckSchedule)
 app.register(logsCleanerSchedule)
 
 app.register(healthChecker)
