@@ -8,7 +8,7 @@
 DROP INDEX "query_logs_created_at_idx";
 
 -- AlterTable
-ALTER TABLE "query_logs" DROP COLUMN "ipAddress",
+-- ALTER TABLE "query_logs" DROP COLUMN "ipAddress",
 ADD COLUMN     "ip_address" TEXT;
 
 -- CreateIndex
