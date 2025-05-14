@@ -7,7 +7,7 @@ export interface CpfDataResponse {
   cpf: string
   name: string
   birthDate: string
-  motherName?: string
+  motherName: string
   gender: string
   sourceApi?: 'primary' | 'secondary' // Indica qual API forneceu a resposta
 }

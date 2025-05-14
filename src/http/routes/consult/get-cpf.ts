@@ -29,7 +29,7 @@ export async function getCPF(app: FastifyInstance) {
             cpf: z.string(),
             name: z.string(),
             birthDate: z.string(),
-            motherName: z.string().optional().default(''),
+            motherName: z.string(),
             gender: z.string(),
           }),
         },
