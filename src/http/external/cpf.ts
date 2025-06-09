@@ -17,6 +17,7 @@ const apiConfigs = [
   {
     name: 'primary' as 'primary' | 'secondary',
     getUrl: () => env.API_CONSULT,
+    paramKey: 'CPF',
     // getApiKey: () => env.API_CPF_PRIMARY_KEY, // Se houver chave de API
     healthy: true,
     consecutiveFails: 0,
@@ -24,6 +25,7 @@ const apiConfigs = [
   {
     name: 'secondary' as 'primary' | 'secondary',
     getUrl: () => env.API_CPF_SECONDARY_URL,
+    paramKey: 'cpf',
     // getApiKey: () => env.API_CPF_SECONDARY_KEY, // Se houver chave de API
     healthy: true,
     consecutiveFails: 0,
@@ -102,12 +104,13 @@ async function executeApiCall(
     throw new Error(`URL for API ${apiConfig.name} is not configured.`)
   }
 
-  // Modificação para adicionar o parâmetro cpf corretamente
+  const paramKey = apiConfig.paramKey || 'cpf'
   if (apiUrl.includes('?')) {
-    apiUrl = `${apiUrl}&cpf=${cpf}`
+    apiUrl = `${apiUrl}&${paramKey}=${cpf}`
   } else {
-    apiUrl = `${apiUrl}?cpf=${cpf}`
+    apiUrl = `${apiUrl}?${paramKey}=${cpf}`
   }
+  
 
   try {
     // console.log(`[CPF Service] Attempting API: ${apiConfig.name} with final URL: ${apiUrl}`); // Log para depuração
