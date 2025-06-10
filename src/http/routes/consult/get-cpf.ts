@@ -10,19 +10,18 @@ import { sendNotification } from '@/lib/notifier/send'
 import { convertToBrazilTime } from '@/utils/convert-to-brazil-time'
 import { getClientIp } from '@/utils/get-client-ip'
 import { capitalizeName } from '@/utils/capitalize-name'
+import { formatCPF } from '@/utils/formated-cpf'
 
 export async function getCPF(app: FastifyInstance) {
   app.withTypeProvider<ZodTypeProvider>().get(
     '/organizations/:slug/cpf',
     {
       config: {
-        // Coloque a configuração do rateLimit aqui dentro
         rateLimit: {
           keyGenerator: (
             request: FastifyRequest<{ Params: { slug: string } }>,
           ) => request.params.slug,
-          max: 5000, // Ou o valor que você decidiu testar
-          // timeWindow: '1 minute', // Opcional, pode herdar do global ou ser definido aqui
+          max: 5000,
         },
       },
       schema: {
@@ -30,14 +29,15 @@ export async function getCPF(app: FastifyInstance) {
         summary: 'Consult CPF information',
         security: [{ bearerAuth: [] }],
         params: z.object({
-          slug: z.string(), // Slug é obrigatório aqui
+          slug: z.string(),
         }),
         querystring: z.object({
           cpf: z.string().regex(/^\d{11}$/, 'Invalid CPF format'),
         }),
         response: {
           200: z.object({
-            cpf: z.string(),
+            cpf: z.string(),             // sem formatação
+            formattedCpf: z.string(),   // com formatação
             name: z.string(),
             firstName: z.string(),
             birthDate: z.string(),
@@ -52,6 +52,7 @@ export async function getCPF(app: FastifyInstance) {
       const { slug } = request.params
       const { cpf } = request.query
 
+      const sanitizedCpf = cpf.replace(/\D/g, '') // remove pontos e traços
       const userIp = getClientIp(request.headers, request.socket)
 
       if (!userIp) {
@@ -106,7 +107,6 @@ export async function getCPF(app: FastifyInstance) {
       const requestLimit = organization.subscription.plan?.maxRequests || 0
 
       if (requestsMade >= requestLimit) {
-        // 🧠 Tentar buscar deviceKey para push via Bark
         const token = await prisma.token.findFirst({
           where: {
             userId: organization.subscription.organization.ownerId,
@@ -122,7 +122,7 @@ export async function getCPF(app: FastifyInstance) {
         await sendNotification({
           event: 'usage.limit-reached',
           orgName: organization.name,
-          deviceKey: token?.deviceKey,
+          deviceKey: token.deviceKey,
         })
 
         throw new BadRequestError('Monthly request limit reached.')
@@ -130,7 +130,7 @@ export async function getCPF(app: FastifyInstance) {
 
       let userData: CpfDataResponse
       try {
-        userData = await fetchCPFData(cpf)
+        userData = await fetchCPFData(sanitizedCpf)
       } catch (error) {
         await prisma.queryLog.create({
           data: {
@@ -144,12 +144,11 @@ export async function getCPF(app: FastifyInstance) {
         throw new BadRequestError('Failed to fetch CPF data.')
       }
 
-      // Capitalizar nomes
       const capitalizedName = capitalizeName(userData.name)
       const capitalizedMotherName = capitalizeName(userData.motherName)
-      
-      // Extrair e capitalizar o primeiro nome
-      const firstName = capitalizedName ? capitalizeName(capitalizedName.split(' ')[0]) : ''
+      const firstName = capitalizedName
+        ? capitalizeName(capitalizedName.split(' ')[0])
+        : ''
 
       await prisma.queryLog.create({
         data: {
@@ -160,13 +159,14 @@ export async function getCPF(app: FastifyInstance) {
         },
       })
 
-      
-
       return reply.send({
-        ...userData,
+        cpf: sanitizedCpf,
+        formattedCpf: formatCPF(sanitizedCpf),
         name: capitalizedName,
         motherName: capitalizedMotherName,
         firstName,
+        birthDate: userData.birthDate,
+        gender: userData.gender,
       })
     },
   )
