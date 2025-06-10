@@ -38,6 +38,7 @@ export async function getCPF(app: FastifyInstance) {
           200: z.object({
             cpf: z.string(),
             name: z.string(),
+            firstName: z.string(),
             birthDate: z.string(),
             motherName: z.string(),
             gender: z.string(),
@@ -142,6 +143,9 @@ export async function getCPF(app: FastifyInstance) {
         throw new BadRequestError('Failed to fetch CPF data.')
       }
 
+      // Extrair o primeiro nome do nome completo
+      const firstName = userData.name.split(' ')[0]
+
       await prisma.queryLog.create({
         data: {
           organizationId: organization.id,
@@ -151,7 +155,10 @@ export async function getCPF(app: FastifyInstance) {
         },
       })
 
-      return reply.send(userData)
+      return reply.send({
+        ...userData,
+        firstName,
+      })
     },
   )
 }
