@@ -9,6 +9,7 @@ import { fetchCPFData, type CpfDataResponse } from '@/http/external/cpf'
 import { sendNotification } from '@/lib/notifier/send'
 import { convertToBrazilTime } from '@/utils/convert-to-brazil-time'
 import { getClientIp } from '@/utils/get-client-ip'
+import { capitalizeName } from '@/utils/capitalize-name'
 
 export async function getCPF(app: FastifyInstance) {
   app.withTypeProvider<ZodTypeProvider>().get(
@@ -143,8 +144,12 @@ export async function getCPF(app: FastifyInstance) {
         throw new BadRequestError('Failed to fetch CPF data.')
       }
 
-      // Extrair o primeiro nome do nome completo
-      const firstName = userData.name.split(' ')[0]
+      // Capitalizar nomes
+      const capitalizedName = capitalizeName(userData.name)
+      const capitalizedMotherName = capitalizeName(userData.motherName)
+      
+      // Extrair e capitalizar o primeiro nome
+      const firstName = capitalizedName ? capitalizeName(capitalizedName.split(' ')[0]) : ''
 
       await prisma.queryLog.create({
         data: {
@@ -155,8 +160,12 @@ export async function getCPF(app: FastifyInstance) {
         },
       })
 
+      
+
       return reply.send({
         ...userData,
+        name: capitalizedName,
+        motherName: capitalizedMotherName,
         firstName,
       })
     },
